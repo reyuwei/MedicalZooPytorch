@@ -12,7 +12,7 @@ class _AbstractDiceLoss(nn.Module):
     Base class for different implementations of Dice loss.
     """
 
-    def __init__(self, weight=None, sigmoid_normalization=True):
+    def __init__(self, weight=None, sigmoid_normalization=True, is_segmentation=True):
         super(_AbstractDiceLoss, self).__init__()
         self.register_buffer('weight', weight)
         self.classes = None
@@ -22,10 +22,14 @@ class _AbstractDiceLoss(nn.Module):
         # normalizing the channels with Sigmoid is the default choice even for multi-class segmentation problems.
         # However if one would like to apply Softmax in order to get the proper probability distribution from the
         # output, just specify sigmoid_normalization=False.
-        if sigmoid_normalization:
-            self.normalization = nn.Sigmoid()
+        if is_segmentation:
+            if sigmoid_normalization:
+                self.normalization = nn.Sigmoid()
+            else:
+                self.normalization = nn.Softmax(dim=1)
         else:
-            self.normalization = nn.Softmax(dim=1)
+            self.normalization = None
+        
 
     def dice(self, input, target, weight):
         # actual Dice score computation; to be implemented by the subclass
@@ -53,7 +57,8 @@ class _AbstractDiceLoss(nn.Module):
 
         assert input.size() == target.size(), "'input' and 'target' must have the same shape"
         # get probabilities from logits
-        input = self.normalization(input)
+        if self.normalization is not None:
+            input = self.normalization(input)
 
         # compute per channel Dice coefficient
         per_channel_dice = self.dice(input, target, weight=self.weight)

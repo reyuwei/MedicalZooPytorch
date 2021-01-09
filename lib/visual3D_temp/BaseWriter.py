@@ -13,7 +13,15 @@ dict_class_names = {"iseg2017": ["Air", "CSF", "GM", "WM"],
                     "brats2019": ["Background", "NCR", "ED", "NET", "ET"],
                     "brats2020": ["Background", "NCR/NET", "ED", "ET"],
                     "covid_seg": ["c1", "c2", "c3"],
-                    "miccai2019": ["c1", "c2", "c3", "c4", "c5", "c6", "c7"]
+                    "miccai2019": ["c1", "c2", "c3", "c4", "c5", "c6", "c7"],
+                    "mrihand": [
+                        "CARPAL",
+                        "METACARPAL1","PROXIMAL_PHALANX1","DISTAL_PHALANX1",
+                        "METACARPAL2","PROXIMAL_PHALANX2","INTERMEDIATE_PHALANX2",
+                        "DISTAL_PHALANX2","METACARPAL3", "PROXIMAL_PHALANX3", 
+                        "INTERMEDIATE_PHALANX3", "DISTAL_PHALANX3", "METACARPAL4", 
+                        "PROXIMAL_PHALANX4", "INTERMEDIATE_PHALANX4", "DISTAL_PHALANX4", 
+                        "METACARPAL5", "PROXIMAL_PHALANX5", "INTERMEDIATE_PHALANX5", "DISTAL_PHALANX5"                    ]
                     }
 
 

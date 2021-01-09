@@ -1,5 +1,4 @@
 from torch.utils.data import DataLoader
-
 from .COVIDxdataset import COVIDxDataset
 from .Covid_Segmentation_dataset import COVID_Seg_Dataset
 from .brats2018 import MICCAIBraTS2018
@@ -11,6 +10,9 @@ from .iseg2019 import MRIDatasetISEG2019
 from .ixi_t1_t2 import IXIMRIdataset
 from .miccai_2019_pathology import MICCAI2019_gleason_pathology
 from .mrbrains2018 import MRIDatasetMRBRAINS2018
+from .mrihand import MRIHandDataset
+import os
+import numpy as np
 
 
 def generate_datasets(args, path='.././datasets'):
@@ -21,7 +23,19 @@ def generate_datasets(args, path='.././datasets'):
     samples_val = args.samples_val
     split_percent = args.split
 
-    if args.dataset_name == "iseg2017":
+    if args.dataset_name == "mrihand":
+        total_data = 90
+        split_pkl = os.path.join(path, "splits_final.pkl")
+        split = np.load(split_pkl, allow_pickle=True)[0]
+        train_lst = split['train'][:1]
+
+        val_lst = split['val'][:1]
+        train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=args.dim,
+                                          lst=train_lst, samples=samples_train, load=args.loadData)
+        val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=args.dim, 
+                                           lst=val_lst, samples=samples_val, load=args.loadData)
+
+    elif args.dataset_name == "iseg2017":
         total_data = 10
         split_idx = int(split_percent * total_data)
         train_loader = MRIDatasetISEG2017(args, 'train', dataset_path=path, crop_dim=args.dim,

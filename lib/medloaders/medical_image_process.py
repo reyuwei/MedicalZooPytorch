@@ -46,6 +46,47 @@ def load_medical_image(path, type=None, resample=None,
     img_tensor = crop_img(img_tensor, crop_size, crop)
     return img_tensor
 
+def load_medical_image_hand(path, type=None, resample=None, rescale=None,
+                       viz3d=False, to_canonical=False, normalization='full_volume_mean',
+                       clip_intenisty=True, crop_size=(0, 0, 0), crop=(0, 0, 0), ):
+    img_nii = nib.load(path)
+
+    if to_canonical:
+        img_nii = nib.as_closest_canonical(img_nii)
+
+    if resample is not None:
+        img_nii = resample_to_output(img_nii, voxel_sizes=resample)
+
+    affine = img_nii.affine
+
+    img_np = np.squeeze(img_nii.get_fdata(dtype=np.float32))
+
+    if viz3d:
+        return torch.from_numpy(img_np)
+
+    # 1. Intensity outlier clipping
+    if clip_intenisty and type != "label":
+        img_np = percentile_clip(img_np)
+
+    # 2. Rescale to specified output shape
+    if rescale is not None:
+        img_np = rescale_data_volume(img_np, rescale)
+
+    # 3. intensity normalization
+    img_tensor = torch.from_numpy(img_np)
+
+    MEAN, STD, MAX, MIN = 0., 1., 1., 0.
+    if type != 'label':
+        MEAN, STD = img_tensor.mean(), img_tensor.std()
+        MAX, MIN = img_tensor.max(), img_tensor.min()
+    if type != "label":
+        img_tensor = normalize_intensity(img_tensor, normalization=normalization, norm_values=(MEAN, STD, MAX, MIN))        
+
+    if type == "label":
+        img_tensor = torch.round(img_tensor)
+
+    img_tensor = crop_img(img_tensor, crop_size, crop)
+    return img_tensor, affine
 
 def medical_image_transform(img_tensor, type=None,
                             normalization="full_volume_mean",

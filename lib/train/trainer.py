@@ -34,8 +34,8 @@ class Trainer:
         for epoch in range(self.start_epoch, self.args.nEpochs):
             self.train_epoch(epoch)
 
-            if self.do_validation:
-                self.validate_epoch(epoch)
+            # if self.do_validation:
+            #     self.validate_epoch(epoch)
 
             val_loss = self.writer.data['val']['loss'] / self.writer.data['val']['count']
 

@@ -15,7 +15,7 @@
             "name": "train",
             "type": "python",
             "request": "launch",
-            "program": "examples/test_miccai_2019.py",
+            "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         }

@@ -16,7 +16,7 @@ class BCEDiceLoss(nn.Module):
         self.classes=classes
 
     def forward(self, input, target):
-        target_expanded = expand_as_one_hot(target.long(), self.classes)
+        target_expanded = expand_as_one_hot(target, self.classes)
         assert input.size() == target_expanded.size(), "'input' and 'target' must have the same shape"
         loss_1 = self.alpha * self.bce(input, target_expanded)
         loss_2, channel_score = self.beta * self.dice(input, target_expanded)

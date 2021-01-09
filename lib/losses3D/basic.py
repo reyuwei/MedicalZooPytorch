@@ -13,7 +13,7 @@ def expand_as_one_hot(input, C, ignore_index=None):
     if input.dim() == 5:
         return input
     assert input.dim() == 4
-
+    input = input.long()
     # expand the input tensor to Nx1xDxHxW before scattering
     input = input.unsqueeze(1)
     # create result tensor shape (NxCxDxHxW)
