@@ -2,6 +2,9 @@
 import argparse
 import os
 
+import sys
+sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
+
 import lib.medloaders as medical_loaders
 import lib.medzoo as medzoo
 import lib.train as train
