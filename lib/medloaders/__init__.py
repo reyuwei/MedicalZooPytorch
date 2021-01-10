@@ -24,16 +24,14 @@ def generate_datasets(args, path='.././datasets'):
     split_percent = args.split
 
     if args.dataset_name == "mrihand":
-        total_data = 90
         split_pkl = os.path.join(path, "splits_final.pkl")
         split = np.load(split_pkl, allow_pickle=True)[0]
-        train_lst = split['train'][:1]
-
-        val_lst = split['val'][:1]
+        train_lst = split['train']
+        val_lst = split['val']
         train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=args.dim,
-                                          lst=train_lst, samples=samples_train, load=args.loadData)
+                                          lst=train_lst, load=args.loadData)
         val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=args.dim, 
-                                           lst=val_lst, samples=samples_val, load=args.loadData)
+                                           lst=val_lst, load=args.loadData)
 
     elif args.dataset_name == "iseg2017":
         total_data = 10

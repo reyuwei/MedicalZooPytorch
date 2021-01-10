@@ -1,4 +1,6 @@
 import glob
+import sys
+sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
 from lib.augment3D.random_shift import RandomShift
 import os
 
@@ -8,16 +10,83 @@ from torch.utils.data import Dataset
 import lib.utils as utils
 import lib.augment3D as augment3D
 from lib.medloaders import medical_image_process as img_loader, nnunet_loader
-from lib.medloaders.medical_loader_utils import create_sub_volumes
+from lib.medloaders.medical_loader_utils import create_sub_volumes, find_random_crop_dim
+from lib.medloaders.medical_image_process import crop_img
 from lib.medloaders.medical_loader_utils import get_viz_set
 import torch
 from pathlib import Path
+
+def Index2PhysicalPoint(index, affine):
+    if isinstance(index, torch.tensor):
+        affine_4 = torch.eye(4).type_as(affine).to(affine.device)
+        affine_4[:3, :4] = affine[:3, :4]
+        index_hom = torch.ones(index.shape[0], 4).type_as(index).to(index.device)
+        index_hom[:, :3] = index[:, :3]
+        point = affine_4 @ index_hom.T    
+        return point.T[:, :3]
+    else:
+        affine_4 = np.eye(4)
+        affine_4[:3, :4] = affine[:3, :4]
+        index_hom = np.ones(index.shape[0], 4)
+        index_hom[:, :3] = index[:, :3]
+        point = affine_4 @ index_hom.T    
+        return point.T[:, :3]
+
+def PhysicalPoint2Index(point, affine):
+    if isinstance(point, torch.tensor):
+        affine_4 = torch.eye(4).type_as(affine).to(affine.device)
+        affine_4[:3, :4] = affine[:3, :4]
+        point_hom = torch.ones(point.shape[0], 4).type_as(point).to(point.device)
+        point_hom[:, :3] = point[:, :3]
+        index = affine_4 @ point_hom.T    
+        return index.T[:, :3]
+    else:
+        affine_4 = np.eye(4)
+        affine_4[:3, :4] = affine[:3, :4]
+        point_hom = np.ones(point.shape[0], 4)
+        point_hom[:, :3] = point[:, :3]
+        index = np.linalg.inv(affine_4) @ point_hom.T
+        return index.T[:, :3]
+
+def crop_pad(t1, s, affine, crop_size):
+    full_vol_dim = t1.shape
+    assert t1.shape == s.shape
+    
+    # pad zero
+    pad_0 = (0,0)
+    pad_1 = (0,0)
+    pad_2 = (0,0)
+    if full_vol_dim[0] < crop_size[0]:
+        gap = np.ceil(crop_size[0] - full_vol_dim[0] / 2)
+        pad_0 =  (int(gap), int(gap))
+    if full_vol_dim[1] < crop_size[1]:
+        gap = np.ceil((crop_size[1] - full_vol_dim[1]) / 2)
+        pad_1 =  (int(gap), int(gap))
+    if full_vol_dim[2] < crop_size[2]:
+        gap = np.ceil((crop_size[2] - full_vol_dim[2]) / 2)
+        pad_2 = (int(gap), int(gap))
+
+
+    t1 = np.pad(t1, (pad_0, pad_1, pad_2), 'constant')
+    s = np.pad(s, (pad_0, pad_1, pad_2), 'constant')
+
+    crop_start = find_random_crop_dim(t1.shape, crop_size) 
+    crop_start_fix = np.array(crop_start)
+    for i in range(len(crop_start)):
+        if crop_start[i] == crop_size[i]:
+            crop_start_fix[i] = 0
+    crop_start_fix = tuple(crop_start_fix)
+    t1 = crop_img(t1, crop_size, crop_start_fix)
+    s = crop_img(s, crop_size, crop_start_fix)
+    return t1, s, affine
+
+
 
 
 class MRIHandDataset(Dataset):
     # "/p300/liyuwei/DATA_mri/Hand_MRI_segdata/nnUNet_preprocessed/Task1074_finegrained_bone_real_90"
     def __init__(self, args, mode, dataset_path='./datasets', crop=False, crop_dim=(200, 200, 200), 
-                 lst=None, samples=1000, load=False, voxel_spacing=[0.5, 0.5, 0.5]):
+                 lst=None, load=False, voxel_spacing=[0.5, 0.5, 0.5]):
         """
         :param mode: 'train','val','test'
         :param dataset_path: root dataset folder
@@ -25,7 +94,7 @@ class MRIHandDataset(Dataset):
         """
         self.mode = mode
         self.root = str(dataset_path)
-        self.CLASSES = 20
+        self.CLASSES = 21
         self.split_lst = lst
         self.voxel_spacing = voxel_spacing
 
@@ -34,13 +103,12 @@ class MRIHandDataset(Dataset):
         self.augmentation = args.augmentation
         self.crop_size = crop_dim
         self.bbx_scale = 1.25
-        self.samples = samples
         self.full_volume = None
 
-        subvol_spacing = str(self.voxel_spacing[0]) + 'x' + str(self.voxel_spacing[1]) + 'x' + str(self.voxel_spacing[2])
-        subvol = '_vol_' + str(self.crop_size[0]) + 'x' + str(self.crop_size[1]) + 'x' + str(self.crop_size[2])
-        self.sub_vol_path = self.root + '/generated/' + self.mode + subvol + "-" + subvol_spacing + '/'
-        self.save_name = self.sub_vol_path + mode + '-samples-' + str(samples) + '.pkl'
+        # subvol_spacing = str(self.voxel_spacing[0]) + 'x' + str(self.voxel_spacing[1]) + 'x' + str(self.voxel_spacing[2])
+        subvol = '_vol_' + str(self.voxel_spacing[0]) + 'x' + str(self.voxel_spacing[1]) + 'x' + str(self.voxel_spacing[2])
+        self.sub_vol_path = self.root + '/generated/' + self.mode + subvol + '/'
+        self.save_name = self.sub_vol_path + mode + '.pkl'
         os.makedirs(self.sub_vol_path, exist_ok=True)
 
         # utils.make_dirs(self.sub_vol_path)
@@ -106,13 +174,12 @@ class MRIHandDataset(Dataset):
 
             if not os.path.exists(f_t1):
                 img_t1_tensor, affine = img_loader.load_medical_image_hand(self.list_t1[i], type="T1", resample=self.voxel_spacing,
-                                                            normalization=self.normalization, rescale=self.crop_size)
+                                                            normalization=self.normalization)
                 np.save(f_t1, img_t1_tensor)
                 np.save(f_t1_affine, affine)
 
             if not os.path.exists(f_t1_mask):
-                label_tensor, affine = img_loader.load_medical_image_hand(self.labels[i], type="label", 
-                                                            resample=self.voxel_spacing, rescale=self.crop_size)
+                label_tensor, affine = img_loader.load_medical_image_hand(self.labels[i], type="label", resample=self.voxel_spacing)
                 np.save(f_t1_mask, label_tensor)
         
             self.data_dict.append({
@@ -133,6 +200,9 @@ class MRIHandDataset(Dataset):
         bbx = {"center": bbx_center, "size": bbx_size, "topleft": bbx_topleft}
         return bbx
 
+    
+
+
     def __getitem__(self, index):
         item = self.data_dict[index]
         t1 = np.load(item['input'])
@@ -140,14 +210,46 @@ class MRIHandDataset(Dataset):
         joint = item['joint']
         affine = item["affine"]
 
-        s_expand = np.zeros([self.CLASSES, s.shape[0], s.shape[1], s.shape[2]])
-        for i in range(0, self.CLASSES):
-            s_expand[i][s==i+1] = 1
-        # s[s>self.CLASSES] = 0
-        # s = s - 1
+        t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
 
         if self.mode == "train" and self.augmentation:
-            [augmented_t1], augmented_s = self.transform([t1], s_expand)
+            # crop
+            [augmented_t1], augmented_s = self.transform([t1], s)
             return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy())
 
-        return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s_expand)
+        return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s)
+
+
+if __name__ == "__main__":
+    path = '/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final'
+    total_data = 90
+    split_pkl = os.path.join(path, "splits_final.pkl")
+    split = np.load(split_pkl, allow_pickle=True)[0]
+    train_lst = split['train']
+    val_lst = split['val']
+
+    class tmp():
+        def __init__(self):
+            self.threshold = 0.1
+            self.normalization = "mean"
+            self.augmentation = True
+    
+    args = tmp()
+    train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=(200, 200, 100),
+                                    lst=train_lst, load=True)
+    val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=(124, 124, 124), 
+                                    lst=val_lst, load=True)
+
+    
+    import SimpleITK as sitk
+    tt1, ts = train_loader.__getitem__(0)
+    sitk.WriteImage(sitk.GetImageFromArray(tt1.squeeze().numpy()), "tmp_tr.nii")
+    sitk.WriteImage(sitk.GetImageFromArray(ts.numpy()), "tmp_tr_t.nii")
+
+    tt1, ts = train_loader.__getitem__(1)
+    sitk.WriteImage(sitk.GetImageFromArray(tt1.squeeze().numpy()), "tmp_tr2.nii")
+    sitk.WriteImage(sitk.GetImageFromArray(ts.numpy()), "tmp_tr_t2.nii")
+    
+    # ttt1, tts = val_loader.__getitem__(1)
+    # sitk.WriteImage(sitk.GetImageFromArray(ttt1.squeeze().numpy()), "tmp_ts.nii")
+    # sitk.WriteImage(sitk.GetImageFromArray(tts.numpy()), "tmp_ts_t.nii")

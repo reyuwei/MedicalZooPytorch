@@ -14,14 +14,15 @@ dict_class_names = {"iseg2017": ["Air", "CSF", "GM", "WM"],
                     "brats2020": ["Background", "NCR/NET", "ED", "ET"],
                     "covid_seg": ["c1", "c2", "c3"],
                     "miccai2019": ["c1", "c2", "c3", "c4", "c5", "c6", "c7"],
+
                     "mrihand": [
-                        "CARPAL",
-                        "METACARPAL1","PROXIMAL_PHALANX1","DISTAL_PHALANX1",
-                        "METACARPAL2","PROXIMAL_PHALANX2","INTERMEDIATE_PHALANX2",
-                        "DISTAL_PHALANX2","METACARPAL3", "PROXIMAL_PHALANX3", 
-                        "INTERMEDIATE_PHALANX3", "DISTAL_PHALANX3", "METACARPAL4", 
-                        "PROXIMAL_PHALANX4", "INTERMEDIATE_PHALANX4", "DISTAL_PHALANX4", 
-                        "METACARPAL5", "PROXIMAL_PHALANX5", "INTERMEDIATE_PHALANX5", "DISTAL_PHALANX5"                    ]
+                        "background",
+                        "carpal",
+                        "thumb1","thumb2","thumb3",
+                        "index1","index2","index3","index4",
+                        "middle1","middle2", "middle3", "middle4", 
+                        "ring1", "ring2", "ring3", "ring4",
+                        "pinky1", "pinky2", "pinky3", "pinky4"]
                     }
 
 
@@ -127,7 +128,7 @@ class TensorboardWriter():
                                           'val': self.data['val']['loss'] / self.data['val']['count'],
                                           }, epoch)
         for i in range(len(self.label_names)):
-            self.writer.add_scalars(self.label_names[i],
+            self.writer.add_scalars('Per_label/' + self.label_names[i],
                                     {'train': self.data['train'][self.label_names[i]] / self.data['train']['count'],
                                      'val': self.data['val'][self.label_names[i]] / self.data['train']['count'],
                                      }, epoch)

@@ -46,20 +46,58 @@ def load_medical_image(path, type=None, resample=None,
     img_tensor = crop_img(img_tensor, crop_size, crop)
     return img_tensor
 
-def load_medical_image_hand(path, type=None, resample=None, rescale=None,
-                       viz3d=False, to_canonical=False, normalization='full_volume_mean',
-                       clip_intenisty=True, crop_size=(0, 0, 0), crop=(0, 0, 0), ):
-    img_nii = nib.load(path)
 
-    if to_canonical:
-        img_nii = nib.as_closest_canonical(img_nii)
+import SimpleITK as sitk
+def sitk_resample(vol, target_spacing, iter="nn"):
+    resample = sitk.ResampleImageFilter()
+    if iter=="nn":
+        resample.SetInterpolator(sitk.sitkNearestNeighbor)
+    else:
+        resample.SetInterpolator(sitk.sitkLinear)
+    resample.SetOutputDirection(vol.GetDirection())
+    resample.SetOutputOrigin(vol.GetOrigin())
+    resample.SetOutputSpacing(target_spacing)
+
+    orig_size = np.array(vol.GetSize(), dtype=np.int)
+    orig_spacing = vol.GetSpacing()
+    new_size = orig_size * (orig_spacing / np.array(target_spacing))
+    new_size = np.ceil(new_size).astype(np.int)  # Image dimensions are in integers
+    new_size = [int(s) for s in new_size]
+    resample.SetSize(new_size)
+    newimage = resample.Execute(vol)
+
+    return newimage
+
+def load_medical_image_hand(path, type=None, resample=None, rescale=None,
+                       viz3d=False, normalization='mean',
+                       clip_intenisty=True, crop_size=(0, 0, 0), crop=(0, 0, 0), ):
+    # img_nii = nib.load(path)
+    img_nii = sitk.ReadImage(path)
 
     if resample is not None:
-        img_nii = resample_to_output(img_nii, voxel_sizes=resample)
+        if type=="label":
+            iter = "nn"
+        else:
+            iter = "linear"
+        img_nii = sitk_resample(img_nii, target_spacing=resample, iter=iter)
 
-    affine = img_nii.affine
+    # affine = img_nii.affine
+    t = np.array(img_nii.GetOrigin()).reshape(3, 1)
+    r = np.array(img_nii.GetDirection()).reshape(3, 3)
+    s = np.array(img_nii.GetSpacing()).reshape(-1)
+    s_id = np.eye(3)
+    s_id[0,0] = s[0]
+    s_id[1,1] = s[1]
+    s_id[2,2] = s[2]
+    trans_mat = np.concatenate([r@s_id, t], axis=-1)
+    trans_mat_4 = np.eye(4)
+    trans_mat_4[:3, :4] = trans_mat
+    affine = trans_mat_4
 
-    img_np = np.squeeze(img_nii.get_fdata(dtype=np.float32))
+    img_np = sitk.GetArrayFromImage(img_nii).transpose(2, 1, 0)
+    img_np = np.array(img_np, dtype=np.float32)
+
+    # img_np = np.squeeze(img_nii.get_fdata(dtype=np.float32))
 
     if viz3d:
         return torch.from_numpy(img_np)
@@ -81,9 +119,6 @@ def load_medical_image_hand(path, type=None, resample=None, rescale=None,
         MAX, MIN = img_tensor.max(), img_tensor.min()
     if type != "label":
         img_tensor = normalize_intensity(img_tensor, normalization=normalization, norm_values=(MEAN, STD, MAX, MIN))        
-
-    if type == "label":
-        img_tensor = torch.round(img_tensor)
 
     img_tensor = crop_img(img_tensor, crop_size, crop)
     return img_tensor, affine
@@ -109,11 +144,14 @@ def crop_img(img_tensor, crop_size, crop):
         return img_tensor
     slices_crop, w_crop, h_crop = crop
     dim1, dim2, dim3 = crop_size
-    inp_img_dim = img_tensor.dim()
+    if torch.is_tensor(img_tensor):
+        inp_img_dim = img_tensor.dim()
+    else:
+        inp_img_dim = len(img_tensor.shape)
     assert inp_img_dim >= 3
-    if img_tensor.dim() == 3:
+    if inp_img_dim == 3:
         full_dim1, full_dim2, full_dim3 = img_tensor.shape
-    elif img_tensor.dim() == 4:
+    elif inp_img_dim == 4:
         _, full_dim1, full_dim2, full_dim3 = img_tensor.shape
         img_tensor = img_tensor[0, ...]
 

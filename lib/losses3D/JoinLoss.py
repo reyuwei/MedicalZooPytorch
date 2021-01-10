@@ -5,7 +5,7 @@ from torch.nn import MSELoss
 
 class JoinLoss(_AbstractDiceLoss):
 
-    def __init__(self, classes=20, skip_index_after=None, weight=None, sigmoid_normalization=True ):
+    def __init__(self, classes=21, skip_index_after=None, weight=None, sigmoid_normalization=True ):
         super().__init__(weight, sigmoid_normalization)
 
         if skip_index_after is not None:

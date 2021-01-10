@@ -17,7 +17,7 @@ def random_rotate3D(img_numpy, min_angle, max_angle):
     angle = np.random.randint(low=min_angle, high=max_angle + 1)
     axes_random_id = np.random.randint(low=0, high=len(all_axes))
     axes = all_axes[axes_random_id]
-    return ndimage.rotate(img_numpy, angle, axes=axes)
+    return ndimage.rotate(img_numpy, angle, axes=axes), angle, axes
 
 
 class RandomRotation(object):
@@ -35,7 +35,8 @@ class RandomRotation(object):
             img_numpy (numpy): rotated img.
             label (numpy): rotated Label segmentation map.
         """
-        img_numpy = random_rotate3D(img_numpy, self.min_angle, self.max_angle)
+        img_numpy, angle, axes = random_rotate3D(img_numpy, self.min_angle, self.max_angle)
         if label.any() != None:
-            label = random_rotate3D(label, self.min_angle, self.max_angle)
+            label = ndimage.rotate(label, angle, axes=axes, order=0)
+            # label = random_rotate3D(label, self.min_angle, self.max_angle)
         return img_numpy, label
