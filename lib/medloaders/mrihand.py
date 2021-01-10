@@ -50,7 +50,6 @@ def PhysicalPoint2Index(point, affine):
 
 def crop_pad(t1, s, affine, crop_size):
     full_vol_dim = t1.shape
-    assert t1.shape == s.shape
     
     # pad zero
     pad_0 = (0,0)
@@ -173,15 +172,15 @@ class MRIHandDataset(Dataset):
                 affine = np.load(f_t1_affine)
 
             if not os.path.exists(f_t1):
-                img_t1_tensor, affine = img_loader.load_medical_image_hand(self.list_t1[i], type="T1", resample=self.voxel_spacing,
+                img_t1_tensor, affine, orig_spacing = img_loader.load_medical_image_hand(self.list_t1[i], type="T1", resample=self.voxel_spacing,
                                                             normalization=self.normalization)
+                label_tensor, affine, _ = img_loader.load_medical_image_hand(self.labels[i], type="label", resample=self.voxel_spacing, 
+                                                            orig_spacing=orig_spacing)
                 np.save(f_t1, img_t1_tensor)
                 np.save(f_t1_affine, affine)
-
-            if not os.path.exists(f_t1_mask):
-                label_tensor, affine = img_loader.load_medical_image_hand(self.labels[i], type="label", resample=self.voxel_spacing)
                 np.save(f_t1_mask, label_tensor)
         
+
             self.data_dict.append({
                 "input": f_t1, 
                 "target_mask": f_t1_mask,
@@ -205,15 +204,20 @@ class MRIHandDataset(Dataset):
 
     def __getitem__(self, index):
         item = self.data_dict[index]
+        if not os.path.exists(item['input']):
+            return
         t1 = np.load(item['input'])
         s = np.load(item['target_mask'])
         joint = item['joint']
         affine = item["affine"]
+        if t1.shape != s.shape:
+            print(item['input'])
 
         t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
+        # print(t1.shape)
+        # print(s.shape)
 
         if self.mode == "train" and self.augmentation:
-            # crop
             [augmented_t1], augmented_s = self.transform([t1], s)
             return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy())
 
@@ -235,20 +239,28 @@ if __name__ == "__main__":
             self.augmentation = True
     
     args = tmp()
-    train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=(200, 200, 100),
+    train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=(128, 128, 128),
                                     lst=train_lst, load=True)
     val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=(124, 124, 124), 
                                     lst=val_lst, load=True)
 
-    
-    import SimpleITK as sitk
-    tt1, ts = train_loader.__getitem__(0)
-    sitk.WriteImage(sitk.GetImageFromArray(tt1.squeeze().numpy()), "tmp_tr.nii")
-    sitk.WriteImage(sitk.GetImageFromArray(ts.numpy()), "tmp_tr_t.nii")
+    for i in range(len(train_loader)):
+        print(i)
+        t1, tar = train_loader.__getitem__(i)
+        print(t1.shape)
+        print(tar.shape)
 
-    tt1, ts = train_loader.__getitem__(1)
-    sitk.WriteImage(sitk.GetImageFromArray(tt1.squeeze().numpy()), "tmp_tr2.nii")
-    sitk.WriteImage(sitk.GetImageFromArray(ts.numpy()), "tmp_tr_t2.nii")
+    # for i in range(len(val_loader)):
+    #     print(i)
+    #     val_loader.__getitem__(i)
+    
+    # import SimpleITK as sitk
+    # sitk.WriteImage(sitk.GetImageFromArray(tt1.squeeze().numpy()), "tmp_tr.nii")
+    # sitk.WriteImage(sitk.GetImageFromArray(ts.numpy()), "tmp_tr_t.nii")
+
+    # tt1, ts = train_loader.__getitem__(1)
+    # sitk.WriteImage(sitk.GetImageFromArray(tt1.squeeze().numpy()), "tmp_tr2.nii")
+    # sitk.WriteImage(sitk.GetImageFromArray(ts.numpy()), "tmp_tr_t2.nii")
     
     # ttt1, tts = val_loader.__getitem__(1)
     # sitk.WriteImage(sitk.GetImageFromArray(ttt1.squeeze().numpy()), "tmp_ts.nii")

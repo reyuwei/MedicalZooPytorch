@@ -73,7 +73,9 @@ def create_model(args):
         sum([p.data.nelement() for p in model.parameters()])))
 
     if optimizer_name == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5, weight_decay=weight_decay)
+        weight_decay = 3e-5
+        optimizer = optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay, momentum=0.99, nesterov=True)
+        # optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.5, weight_decay=weight_decay)
     elif optimizer_name == 'adam':
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     elif optimizer_name == 'rmsprop':

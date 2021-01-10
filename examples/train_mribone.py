@@ -14,7 +14,7 @@ import lib.train as train
 import lib.utils as utils
 from lib.losses3D.JoinLoss import JoinLoss
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 seed = 1777777
 torch.manual_seed(seed)
 
@@ -23,6 +23,9 @@ def main():
     args = get_arguments()
     utils.reproducibility(args, seed)
     utils.make_dirs(args.save)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    print("Number of available GPUs: {}".format(torch.cuda.device_count()))
 
     training_generator, val_generator, full_volume, affine = \
                     medical_loaders.generate_datasets(args, path='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final')
@@ -41,9 +44,9 @@ def main():
 
 def get_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batchSz', type=int, default=2)
+    parser.add_argument('--batchSz', type=int, default=4)
     parser.add_argument('--dataset_name', type=str, default="mrihand")
-    parser.add_argument('--dim', nargs="+", type=int, default=(256, 256, 128))
+    parser.add_argument('--dim', nargs="+", type=int, default=(128, 128, 128))
     parser.add_argument('--nEpochs', type=int, default=200)
     parser.add_argument('--classes', type=int, default=21)
     parser.add_argument('--samples_train', type=int, default=10)
@@ -57,8 +60,7 @@ def get_arguments():
                         help='Tensor normalization: options ,max_min,',
                         choices=('max_min', 'full_volume_mean', 'brats', 'max', 'mean'))
     # parser.add_argument('--fold_id', default='1', type=str, help='Select subject for fold validation')
-    parser.add_argument('--lr', default=1e-3, type=float,
-                        help='learning rate (default: 1e-3)')
+    parser.add_argument('--lr', default=1e-2, type=float,  help='learning rate (default: 1e-2)')
     parser.add_argument('--split', default=0.7, type=float, help='Select percentage of training data(default: 0.8)')
     parser.add_argument('--cuda', action='store_true', default=True)
     parser.add_argument('--segonly', action='store_true', default=True)
@@ -71,6 +73,7 @@ def get_arguments():
                         choices=('sgd', 'adam', 'rmsprop'))
     parser.add_argument('--log_dir', type=str,
                         default='../runs/')
+    parser.add_argument("--gpu", type=str, default="0", help="select gpuid")
 
     args = parser.parse_args()
 

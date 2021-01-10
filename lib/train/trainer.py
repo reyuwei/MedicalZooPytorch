@@ -4,6 +4,9 @@ import torch
 from lib.utils.general import prepare_input
 from lib.visual3D_temp.BaseWriter import TensorboardWriter
 
+def poly_lr(epoch, max_epochs, initial_lr, exponent=0.9):
+    return initial_lr * (1 - epoch / max_epochs)**exponent
+
 
 class Trainer:
     """
@@ -32,10 +35,11 @@ class Trainer:
 
     def training(self):
         for epoch in range(self.start_epoch, self.args.nEpochs):
+            self.maybe_update_lr(epoch)
             self.train_epoch(epoch)
 
-            # if self.do_validation:
-            #     self.validate_epoch(epoch)
+            if self.do_validation:
+                self.validate_epoch(epoch)
 
             val_loss = self.writer.data['val']['loss'] / self.writer.data['val']['count']
 
@@ -87,3 +91,20 @@ class Trainer:
                                           epoch * self.len_epoch + batch_idx)
 
         self.writer.display_terminal(len(self.valid_data_loader), epoch, mode='val', summary=True)
+
+    def maybe_update_lr(self, epoch=None):
+        """
+        if epoch is not None we overwrite epoch. Else we use epoch = self.epoch + 1
+
+        (maybe_update_lr is called in on_epoch_end which is called before epoch is incremented.
+        herefore we need to do +1 here)
+
+        :param epoch:
+        :return:
+        """
+        if epoch is None:
+            ep = epoch + 1
+        else:
+            ep = epoch
+        self.optimizer.param_groups[0]['lr'] = poly_lr(ep, self.args.nEpochs, self.args.lr, 0.9)
+        self.writer.writer.add_scalar("lr", self.optimizer.param_groups[0]['lr'], epoch)

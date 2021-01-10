@@ -48,7 +48,7 @@ def load_medical_image(path, type=None, resample=None,
 
 
 import SimpleITK as sitk
-def sitk_resample(vol, target_spacing, iter="nn"):
+def sitk_resample(vol, orig_spacing, target_spacing, iter="nn"):
     resample = sitk.ResampleImageFilter()
     if iter=="nn":
         resample.SetInterpolator(sitk.sitkNearestNeighbor)
@@ -59,7 +59,6 @@ def sitk_resample(vol, target_spacing, iter="nn"):
     resample.SetOutputSpacing(target_spacing)
 
     orig_size = np.array(vol.GetSize(), dtype=np.int)
-    orig_spacing = vol.GetSpacing()
     new_size = orig_size * (orig_spacing / np.array(target_spacing))
     new_size = np.ceil(new_size).astype(np.int)  # Image dimensions are in integers
     new_size = [int(s) for s in new_size]
@@ -68,18 +67,20 @@ def sitk_resample(vol, target_spacing, iter="nn"):
 
     return newimage
 
-def load_medical_image_hand(path, type=None, resample=None, rescale=None,
+def load_medical_image_hand(path, type=None, resample=None,
                        viz3d=False, normalization='mean',
-                       clip_intenisty=True, crop_size=(0, 0, 0), crop=(0, 0, 0), ):
+                       clip_intenisty=True, orig_spacing=None):
     # img_nii = nib.load(path)
     img_nii = sitk.ReadImage(path)
+    if orig_spacing is None:
+        orig_spacing = img_nii.GetSpacing()
 
     if resample is not None:
         if type=="label":
-            iter = "nn"
+            itermethod = "nn"
         else:
-            iter = "linear"
-        img_nii = sitk_resample(img_nii, target_spacing=resample, iter=iter)
+            itermethod = "linear"
+        img_nii = sitk_resample(img_nii, orig_spacing, target_spacing=resample, iter=itermethod)
 
     # affine = img_nii.affine
     t = np.array(img_nii.GetOrigin()).reshape(3, 1)
@@ -106,10 +107,6 @@ def load_medical_image_hand(path, type=None, resample=None, rescale=None,
     if clip_intenisty and type != "label":
         img_np = percentile_clip(img_np)
 
-    # 2. Rescale to specified output shape
-    if rescale is not None:
-        img_np = rescale_data_volume(img_np, rescale)
-
     # 3. intensity normalization
     img_tensor = torch.from_numpy(img_np)
 
@@ -119,9 +116,7 @@ def load_medical_image_hand(path, type=None, resample=None, rescale=None,
         MAX, MIN = img_tensor.max(), img_tensor.min()
     if type != "label":
         img_tensor = normalize_intensity(img_tensor, normalization=normalization, norm_values=(MEAN, STD, MAX, MIN))        
-
-    img_tensor = crop_img(img_tensor, crop_size, crop)
-    return img_tensor, affine
+    return img_tensor, affine, orig_spacing
 
 def medical_image_transform(img_tensor, type=None,
                             normalization="full_volume_mean",
