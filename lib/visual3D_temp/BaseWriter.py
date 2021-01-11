@@ -130,7 +130,7 @@ class TensorboardWriter():
         for i in range(len(self.label_names)):
             self.writer.add_scalars('Per_label/' + self.label_names[i],
                                     {'train': self.data['train'][self.label_names[i]] / self.data['train']['count'],
-                                     'val': self.data['val'][self.label_names[i]] / self.data['train']['count'],
+                                     'val': self.data['val'][self.label_names[i]] / self.data['val']['count'],
                                      }, epoch)
 
         train_csv_line = 'Epoch:{:2d} Loss:{:.4f} DSC:{:.4f}'.format(epoch,

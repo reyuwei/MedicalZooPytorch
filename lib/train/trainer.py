@@ -33,6 +33,14 @@ class Trainer:
         self.terminal_show_freq = self.args.terminal_show_freq
         self.start_epoch = 1
 
+        if self.args.resume != "":
+            self._resume_checkpoint(self.args.resume)
+
+    def _resume_checkpoint(self,resume_folder):
+        from pathlib import Path
+        ckpt_file = resume_folder / (Path(resume_folder).stem + "_last_epoch.pth")
+        self.epoch, self.optimizer = self.model.restore_checkpoint(ckpt_file, optimizer=self.optimizer)
+
     def training(self):
         for epoch in range(self.start_epoch, self.args.nEpochs):
             self.maybe_update_lr(epoch)
@@ -59,9 +67,8 @@ class Trainer:
         for batch_idx, input_tuple in enumerate(self.train_data_loader):
 
             self.optimizer.zero_grad()
-
             input_tensor, target = prepare_input(input_tuple=input_tuple, args=self.args)
-            input_tensor.requires_grad = True
+            # input_tensor.requires_grad = True
             output = self.model(input_tensor)
             loss_dice, per_ch_score = self.criterion(output, target)
             loss_dice.backward()
@@ -82,7 +89,7 @@ class Trainer:
         for batch_idx, input_tuple in enumerate(self.valid_data_loader):
             with torch.no_grad():
                 input_tensor, target = prepare_input(input_tuple=input_tuple, args=self.args)
-                input_tensor.requires_grad = False
+                # input_tensor.requires_grad = False
 
                 output = self.model(input_tensor)
                 loss, per_ch_score = self.criterion(output, target)

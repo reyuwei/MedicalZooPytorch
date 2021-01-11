@@ -117,3 +117,8 @@ class BaseTrainer:
         device = torch.device('cuda:0' if n_gpu_use > 0 else 'cpu')
         list_ids = list(range(n_gpu_use))
         return device, list_ids
+
+    def _resume_checkpoint(self,resume_folder):
+        from pathlib import Path
+        ckpt_file = resume_folder / Path(resume_folder).stem + "_last_epoch.pth"
+        self.epoch, self.optimizer = self.model.restore_checkpoint(ckpt_file, optimizer=self.optimizer)

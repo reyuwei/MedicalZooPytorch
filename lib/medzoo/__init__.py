@@ -67,7 +67,7 @@ def create_model(args):
         depth = 18
         model = generate_resnet3d(in_channels=in_channels, classes=num_classes, model_depth=depth)
     elif model_name == "MRIBONENET":
-        model = MRIBoneNet(in_channels=in_channels, classes=num_classes, seg_only=args.segonly)
+        model = MRIBoneNet(in_channels=in_channels, classes=num_classes, seg_only=args.segonly, seg_net=args.segnet)
 
     print(model_name, 'Number of params: {}'.format(
         sum([p.data.nelement() for p in model.parameters()])))

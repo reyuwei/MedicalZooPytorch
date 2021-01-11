@@ -25,20 +25,18 @@ class RandomChoice(object):
         self.transforms = transforms
         self.p = p
 
-    def __call__(self, img_tensors, label):
+    def __call__(self, img_tensors, label, affine):
         augment = np.random.random(1) < self.p
         if not augment:
             return img_tensors, label
         t = random.choice(self.transforms)
-
         for i in range(len(img_tensors)):
-
             if i == (len(img_tensors) - 1):
                 ### do only once the augmentation to the label
-                img_tensors[i], label = t(img_tensors[i], label)
+                img_tensors[i], label, affine = t(img_tensors[i], label, affine)
             else:
-                img_tensors[i], _ = t(img_tensors[i], label)
-        return img_tensors, label
+                img_tensors[i], _, affine = t(img_tensors[i], label, affine)
+        return img_tensors, label, affine
 
 
 class ComposeTransforms(object):

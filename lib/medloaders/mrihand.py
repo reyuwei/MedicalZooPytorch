@@ -1,7 +1,5 @@
-import glob
 import sys
 sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
-from lib.augment3D.random_shift import RandomShift
 import os
 
 import numpy as np
@@ -9,15 +7,29 @@ from torch.utils.data import Dataset
 
 import lib.utils as utils
 import lib.augment3D as augment3D
-from lib.medloaders import medical_image_process as img_loader, nnunet_loader
-from lib.medloaders.medical_loader_utils import create_sub_volumes, find_random_crop_dim
+from lib.medloaders import medical_image_process as img_loader
+from lib.medloaders.medical_loader_utils import find_random_crop_dim
 from lib.medloaders.medical_image_process import crop_img
-from lib.medloaders.medical_loader_utils import get_viz_set
 import torch
 from pathlib import Path
 
+def mask2xyz(mask, affine):
+    grid = create_grid(mask.shape)
+    index = grid[mask.reshape(-1)!=0, :]
+    pp = Index2PhysicalPoint(index.numpy(), affine)
+    np.savetxt("tmp.xyz", pp)
+
+def create_grid(volume_size):
+    volume_size = volume_size
+    xxx, yyy, zzz = torch.meshgrid(torch.arange(volume_size[0]), 
+                                    torch.arange(volume_size[1]), 
+                                    torch.arange(volume_size[2]))
+    grid = torch.stack([xxx, yyy, zzz], dim=-1).type(torch.float)
+    grid = grid.reshape((-1, 3))
+    return grid
+
 def Index2PhysicalPoint(index, affine):
-    if isinstance(index, torch.tensor):
+    if isinstance(index, torch.Tensor):
         affine_4 = torch.eye(4).type_as(affine).to(affine.device)
         affine_4[:3, :4] = affine[:3, :4]
         index_hom = torch.ones(index.shape[0], 4).type_as(index).to(index.device)
@@ -27,13 +39,13 @@ def Index2PhysicalPoint(index, affine):
     else:
         affine_4 = np.eye(4)
         affine_4[:3, :4] = affine[:3, :4]
-        index_hom = np.ones(index.shape[0], 4)
+        index_hom = np.ones([index.shape[0], 4])
         index_hom[:, :3] = index[:, :3]
         point = affine_4 @ index_hom.T    
         return point.T[:, :3]
 
 def PhysicalPoint2Index(point, affine):
-    if isinstance(point, torch.tensor):
+    if isinstance(point, torch.Tensor):
         affine_4 = torch.eye(4).type_as(affine).to(affine.device)
         affine_4[:3, :4] = affine[:3, :4]
         point_hom = torch.ones(point.shape[0], 4).type_as(point).to(point.device)
@@ -43,7 +55,7 @@ def PhysicalPoint2Index(point, affine):
     else:
         affine_4 = np.eye(4)
         affine_4[:3, :4] = affine[:3, :4]
-        point_hom = np.ones(point.shape[0], 4)
+        point_hom = np.ones([point.shape[0], 4])
         point_hom[:, :3] = point[:, :3]
         index = np.linalg.inv(affine_4) @ point_hom.T
         return index.T[:, :3]
@@ -69,14 +81,21 @@ def crop_pad(t1, s, affine, crop_size):
     t1 = np.pad(t1, (pad_0, pad_1, pad_2), 'constant')
     s = np.pad(s, (pad_0, pad_1, pad_2), 'constant')
 
+    pad_mat = np.eye(4)
+    pad_mat[:3, -1] = np.array([-pad_0[0], -pad_1[0], -pad_2[0]])
+    affine = affine @ pad_mat
+
     crop_start = find_random_crop_dim(t1.shape, crop_size) 
     crop_start_fix = np.array(crop_start)
     for i in range(len(crop_start)):
         if crop_start[i] == crop_size[i]:
             crop_start_fix[i] = 0
     crop_start_fix = tuple(crop_start_fix)
-    t1 = crop_img(t1, crop_size, crop_start_fix)
-    s = crop_img(s, crop_size, crop_start_fix)
+    t1, crop_mat = crop_img(t1, crop_size, crop_start_fix)
+    s, _ = crop_img(s, crop_size, crop_start_fix)
+
+    affine = affine @ crop_mat
+
     return t1, s, affine
 
 
@@ -217,11 +236,15 @@ class MRIHandDataset(Dataset):
         # print(t1.shape)
         # print(s.shape)
 
-        if self.mode == "train" and self.augmentation:
-            [augmented_t1], augmented_s = self.transform([t1], s)
-            return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy())
+        joint_tensor = torch.from_numpy(joint).float()
 
-        return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s)
+        if self.mode == "train" and self.augmentation:
+            [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
+            return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy()), \
+                    torch.from_numpy(augmented_affine).float(), joint_tensor
+
+        affine_tensor = torch.from_numpy(affine).float()
+        return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor
 
 
 if __name__ == "__main__":
@@ -241,12 +264,12 @@ if __name__ == "__main__":
     args = tmp()
     train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=(128, 128, 128),
                                     lst=train_lst, load=True)
-    val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=(124, 124, 124), 
+    val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=(32, 32, 32), 
                                     lst=val_lst, load=True)
 
     for i in range(len(train_loader)):
-        print(i)
-        t1, tar = train_loader.__getitem__(i)
+        print(3)
+        t1, tar = train_loader.__getitem__(3)
         print(t1.shape)
         print(tar.shape)
 

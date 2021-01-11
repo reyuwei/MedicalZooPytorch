@@ -5,16 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "resume",
+            "type": "python",
+            "request": "launch",
+            "program": "examples/train_mribone.py",
+            "cwd": "${workspaceFolder}",
+            "args": ["--segonly", "--batchSz", "5", 
+                "--gpu", "1", 
+                "--resume", "/p300/liyuwei/MRI_Bonenet/saved_models/MRIBONENET_checkpoints/MRIBONENET_10_01___12_15_mrihand_"],
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "env": {"envFile":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/export.env"},
         },
         {
             "name": "train",
             "type": "python",
             "request": "launch",
+            "env": {"PYTHONPATH":"\"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python\":$PYTHONPATH", 
+                        "PATH":"\"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin\":$PATH"},
             "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"

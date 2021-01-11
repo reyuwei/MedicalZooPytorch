@@ -28,9 +28,12 @@ class RandomShift(object):
     def __init__(self, max_percentage=0.2):
         self.max_percentage = max_percentage
 
-    def __call__(self, img_numpy, label=None):
+    def __call__(self, img_numpy, label=None, affine=None):
         d1, d2, d3 = compute_random(img_numpy, self.max_percentage)
+        shift_mat = np.array([[1, 0, 0, d1], [0, 1, 0, d2], [0, 0, 1, d3], [0, 0, 0, 1]])
+        affine = affine @ shift_mat
+        
         img_numpy = transform_matrix_offset_center_3d(img_numpy, d1, d2, d3, order=3)
         if label.any() != None:
             label = transform_matrix_offset_center_3d(label, d1, d2, d3, order=0)
-        return img_numpy, label
+        return img_numpy, label, affine

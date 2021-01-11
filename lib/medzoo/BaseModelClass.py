@@ -62,7 +62,7 @@ class BaseModel(nn.Module, ABC):
             optimizer.load_state_dict(ckpt_dict['optimizer_state_dict'])
 
         # Return global step
-        return ckpt_dict['epoch']
+        return ckpt_dict['epoch'], optimizer
 
     def save_checkpoint(self,
                         directory,

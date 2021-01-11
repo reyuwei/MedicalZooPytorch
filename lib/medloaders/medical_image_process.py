@@ -150,22 +150,27 @@ def crop_img(img_tensor, crop_size, crop):
         _, full_dim1, full_dim2, full_dim3 = img_tensor.shape
         img_tensor = img_tensor[0, ...]
 
+    crop_mat = np.eye(4)
     if full_dim1 == dim1:
         img_tensor = img_tensor[:, w_crop:w_crop + dim2,
                      h_crop:h_crop + dim3]
+        crop_mat[:3, -1] = [0, w_crop, h_crop]
     elif full_dim2 == dim2:
         img_tensor = img_tensor[slices_crop:slices_crop + dim1, :,
                      h_crop:h_crop + dim3]
+        crop_mat[:3, -1] = [slices_crop, 0, h_crop]
     elif full_dim3 == dim3:
         img_tensor = img_tensor[slices_crop:slices_crop + dim1, w_crop:w_crop + dim2, :]
+        crop_mat[:3, -1] = [slices_crop, w_crop, 0]
     else:
         img_tensor = img_tensor[slices_crop:slices_crop + dim1, w_crop:w_crop + dim2,
                      h_crop:h_crop + dim3]
+        crop_mat[:3, -1] = [slices_crop, w_crop, h_crop]
 
     if inp_img_dim == 4:
         return img_tensor.unsqueeze(0)
 
-    return img_tensor
+    return img_tensor, crop_mat
 
 
 def load_affine_matrix(path):

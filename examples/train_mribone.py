@@ -3,7 +3,7 @@ import argparse
 import os
 
 import torch
-
+import numpy as np
 import sys
 sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
 
@@ -13,16 +13,31 @@ import lib.train as train
 # Lib files
 import lib.utils as utils
 from lib.losses3D.JoinLoss import JoinLoss
-
+import json
 # os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 seed = 1777777
 torch.manual_seed(seed)
+
+
+# with open('commandline_args.txt', 'w') as f:
+#     json.dump(args.__dict__, f, indent=2)
+
+# parser = ArgumentParser()
+# args = parser.parse_args()
+# with open('commandline_args.txt', 'r') as f:
+#     args.__dict__ = json.load(f)
+
+# print(args)
 
 
 def main():
     args = get_arguments()
     utils.reproducibility(args, seed)
     utils.make_dirs(args.save)
+
+    print(args)
+    with open(args.save + 'args.txt', 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     print("Number of available GPUs: {}".format(torch.cuda.device_count()))
@@ -47,7 +62,7 @@ def get_arguments():
     parser.add_argument('--batchSz', type=int, default=4)
     parser.add_argument('--dataset_name', type=str, default="mrihand")
     parser.add_argument('--dim', nargs="+", type=int, default=(128, 128, 128))
-    parser.add_argument('--nEpochs', type=int, default=200)
+    parser.add_argument('--nEpochs', type=int, default=9999)
     parser.add_argument('--classes', type=int, default=21)
     parser.add_argument('--samples_train', type=int, default=10)
     parser.add_argument('--samples_val', type=int, default=10)
@@ -64,6 +79,7 @@ def get_arguments():
     parser.add_argument('--split', default=0.7, type=float, help='Select percentage of training data(default: 0.8)')
     parser.add_argument('--cuda', action='store_true', default=True)
     parser.add_argument('--segonly', action='store_true', default=True)
+    parser.add_argument('--segnet', type=str, default="unet3d")
     parser.add_argument('--loadData', default=True)
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')

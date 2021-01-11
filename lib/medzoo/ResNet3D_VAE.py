@@ -102,6 +102,7 @@ class ResNetEncoder(nn.Module):
         self.down_channels_1 = 2 * self.start_channels
         self.down_channels_2 = 2 * self.down_channels_1
         self.down_channels_3 = 2 * self.down_channels_2
+        self.out_channel = self.down_channels_3
         # print("self.down_channels_3", self.down_channels_3)
 
         self.blue_1 = BlueBlock(in_channels=in_channels, out_channels=self.start_channels)

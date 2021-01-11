@@ -98,8 +98,9 @@ class BoneLayer(Module):
             if i_val_joint in globalvar.JOINT_ID_BONE_DICT:
                 i_val_bone = globalvar.JOINT_ID_BONE_DICT[i_val_joint]
                 joint_rot = th_rot_map[:, (i_val_bone - 1) * 9:i_val_bone * 9].contiguous().view(batch_size, 3, 3)
-                if i_val_bone in [1, 4, 8, 12, 16]:
-                    joint_offset = th_offset[:, i_val_bone - 1, :].contiguous().view(batch_size, 3, 1)
+                if th_offset is not None:
+                    if i_val_bone in [1, 4, 8, 12, 16]:
+                        joint_offset = th_offset[:, i_val_bone - 1, :].contiguous().view(batch_size, 3, 1)
             else:
                 joint_rot = self.identity_rot.repeat(batch_size, 1, 1)
 

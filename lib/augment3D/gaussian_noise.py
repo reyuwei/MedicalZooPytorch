@@ -12,7 +12,7 @@ class GaussianNoise(object):
         self.mean = mean
         self.std = std
 
-    def __call__(self, img_numpy, label=None):
+    def __call__(self, img_numpy, label=None, affine=None):
         """
         Args:
             img_numpy (numpy): Image to be flipped.
@@ -23,4 +23,4 @@ class GaussianNoise(object):
             label (numpy): flipped Label segmentation.
         """
 
-        return random_noise(img_numpy, self.mean, self.std), label
+        return random_noise(img_numpy, self.mean, self.std), label, affine

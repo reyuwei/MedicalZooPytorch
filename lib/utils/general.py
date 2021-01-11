@@ -48,6 +48,14 @@ def prepare_input(input_tuple, inModalities=-1, inChannels=-1, cuda=False, args=
         modalities = inModalities
         channels = inChannels
         in_cuda = cuda
+
+    if args.dataset_name == "mrihand":
+        input_tensor, target, affine_mat, joint = input_tuple
+        if in_cuda:
+            input_tensor, target = input_tensor.cuda(), target.cuda()
+            affine_mat, joint = affine_mat.cuda(), joint.cuda()
+            return (input_tensor, affine_mat), (target, joint)
+    
     if modalities == 4:
         if channels == 4:
             img_1, img_2, img_3, img_4, target = input_tuple
@@ -105,6 +113,7 @@ def adjust_opt(optAlg, optimizer, epoch):
 
 
 def make_dirs(path):
+    # os.makedirs(path, exist_ok=True)
     if os.path.exists(path):
         shutil.rmtree(path)
         os.mkdir(path)

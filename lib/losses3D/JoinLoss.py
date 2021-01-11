@@ -16,10 +16,11 @@ class JoinLoss(_AbstractDiceLoss):
 
     def forward(self, input, target):
         pred_mask, joint, _, _ = input
+        target_mask, joint_gt = target
 
-        loss_dice, per_channel_dice = self.seg_loss(pred_mask, target)
+        loss_dice, per_channel_dice = self.seg_loss(pred_mask, target_mask)
         if joint is not None:
-            loss_joint = self.joint_loss(joint, target['joint'])
+            loss_joint = self.joint_loss(joint, joint_gt)
             loss = loss_dice + loss_joint
         else:
             loss = loss_dice
