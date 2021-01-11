@@ -99,7 +99,7 @@ class MRIBoneNet(BaseModel):
         mask = mask_flat.view(x.shape)
         return mask
 
-    def forward_bone(self, x, affine):
+    def forward_bone(self, x, affine, root):
         '''
         x: [B, 1, H, W, D]
         feature: [B, FC, 32, 32, 32]
@@ -116,9 +116,9 @@ class MRIBoneNet(BaseModel):
 
         if self.use_lbs: # pose and scale
             scale = nn.functional.Tanh(shape) + torch.ones_like(shape)
-            verts, joints = self.bonelayer(pose, th_scale=scale)
+            verts, joints = self.bonelayer(pose, th_scale=scale, root_position=root)
         else: # pose and shape
-            verts, joints = self.bonelayer(pose, th_shape_param=shape)
+            verts, joints = self.bonelayer(pose, th_shape_param=shape, root_position=root)
 
         proj_mask = self.map(x, affine, verts)
 
@@ -131,12 +131,13 @@ class MRIBoneNet(BaseModel):
 
 
     def forward(self, x):
-        input_x, affine = x
+        input_x, affine, joint = x
         if self.seg_only:
             out = self.segnet(input_x)
             return out, None, None, None
         else:
-            self.forward_bone(input_x, affine)
+            root = joint[:, self.center_idx, :]
+            self.forward_bone(input_x, affine, root)
 
     def test(self,device='cpu'):
         input_tensor = torch.rand(1, 1, 128, 128, 128)

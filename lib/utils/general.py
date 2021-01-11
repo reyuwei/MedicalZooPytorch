@@ -54,7 +54,7 @@ def prepare_input(input_tuple, inModalities=-1, inChannels=-1, cuda=False, args=
         if in_cuda:
             input_tensor, target = input_tensor.cuda(), target.cuda()
             affine_mat, joint = affine_mat.cuda(), joint.cuda()
-            return (input_tensor, affine_mat), (target, joint)
+            return (input_tensor, affine_mat, joint), (target, joint)
     
     if modalities == 4:
         if channels == 4:
