@@ -28,7 +28,7 @@ class RandomChoice(object):
     def __call__(self, img_tensors, label, affine):
         augment = np.random.random(1) < self.p
         if not augment:
-            return img_tensors, label
+            return img_tensors, label, affine
         t = random.choice(self.transforms)
         for i in range(len(img_tensors)):
             if i == (len(img_tensors) - 1):

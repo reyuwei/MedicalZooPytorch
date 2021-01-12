@@ -50,6 +50,12 @@ class TensorboardWriter():
         data['val']['count'] = 1.0
         data['train']['dsc'] = 0.0
         data['val']['dsc'] = 0.0
+        data['train']['loss_joint'] = 0
+        data['train']['joint_auc'] = 0
+        data['train']['joint_mse'] = 0
+        data['val']['loss_joint'] = 0
+        data['val']['joint_auc'] = 0
+        data['val']['joint_mse'] = 0
         return data
 
     def display_terminal(self, iter, epoch, mode='train', summary=False):
@@ -94,10 +100,15 @@ class TensorboardWriter():
         self.data[mode]['dsc'] = 0.0
         self.data[mode]['loss'] = 0.0
         self.data[mode]['count'] = 1
+
+        self.data[mode]['loss_joint'] = 0
+        self.data[mode]['joint_auc'] = 0
+        self.data[mode]['joint_mse'] = 0
+
         for i in range(len(self.label_names)):
             self.data[mode][self.label_names[i]] = 0.0
 
-    def update_scores(self, iter, loss, channel_score, mode, writer_step):
+    def update_scores(self, iter, loss, channel_score, mode, writer_step, meta=None):
         """
         :param iter: iteration or partial epoch
         :param loss: any loss torch.tensor.item()
@@ -114,6 +125,11 @@ class TensorboardWriter():
         self.data[mode]['loss'] += loss
         self.data[mode]['count'] = iter + 1
 
+        if meta is not None:
+            self.data[mode]['loss_joint'] += meta['loss_joint']
+            self.data[mode]['joint_auc'] += meta['joint_auc']
+            self.data[mode]['joint_mse'] += meta['joint_mse']
+
         for i in range(num_channels):
             self.data[mode][self.label_names[i]] += channel_score[i]
             if self.writer is not None:
@@ -127,21 +143,33 @@ class TensorboardWriter():
         self.writer.add_scalars('Loss/', {'train': self.data['train']['loss'] / self.data['train']['count'],
                                           'val': self.data['val']['loss'] / self.data['val']['count'],
                                           }, epoch)
+        self.writer.add_scalars('Joint/Loss/', {'train': self.data['train']['loss_joint'] / self.data['train']['count'],
+                                                'val': self.data['val']['loss_joint'] / self.data['val']['count'],
+                                                }, epoch)
+        self.writer.add_scalars('Joint/mse/', {'train': self.data['train']['joint_mse'] / self.data['train']['count'],
+                                                'val': self.data['val']['joint_mse'] / self.data['val']['count'],
+                                                }, epoch)
+        self.writer.add_scalars('Joint/auc/', {'train': self.data['train']['joint_auc'] / self.data['train']['count'],
+                                        'val': self.data['val']['joint_auc'] / self.data['val']['count'],
+                                        }, epoch)
+
+
         for i in range(len(self.label_names)):
             self.writer.add_scalars('Per_label/' + self.label_names[i],
                                     {'train': self.data['train'][self.label_names[i]] / self.data['train']['count'],
                                      'val': self.data['val'][self.label_names[i]] / self.data['val']['count'],
                                      }, epoch)
+        
 
         train_csv_line = 'Epoch:{:2d} Loss:{:.4f} DSC:{:.4f}'.format(epoch,
                                                                      self.data['train']['loss'] / self.data['train'][
                                                                          'count'],
                                                                      self.data['train']['dsc'] / self.data['train'][
                                                                          'count'])
-        val_csv_line = 'Epoch:{:2d} Loss:{:.4f} DSC:{:.4f}'.format(epoch,
-                                                                   self.data['val']['loss'] / self.data['val'][
-                                                                       'count'],
-                                                                   self.data['val']['dsc'] / self.data['val'][
-                                                                       'count'])
+        val_csv_line = 'Epoch:{:2d} Loss:{:.4f} DSC:{:.4f} J_mse:{:.4f} J_auc:{:.4f}'.format(epoch,
+                                                                   self.data['val']['loss'] / self.data['val']['count'],
+                                                                   self.data['val']['dsc'] / self.data['val']['count'],
+                                                                   self.data['val']['joint_mse'] / self.data['val']['count'],
+                                                                   self.data['val']['joint_auc'] / self.data['val']['count'])
         self.csv_train.write(train_csv_line + '\n')
         self.csv_val.write(val_csv_line + '\n')

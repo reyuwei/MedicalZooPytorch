@@ -32,6 +32,16 @@
             "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
+        },
+        {
+            "name": "train with bone",
+            "type": "python",
+            "request": "launch",
+            "args": ["--segnet", "unet3d", "--joint_center_idx", "0", "--use_lbs", "--gpu", "3", "--batchSz", "2"],
+            "env": {"envFile":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/export.env"},
+            "program": "examples/train_mribone.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
         }
     ]
 }

@@ -50,11 +50,13 @@ def prepare_input(input_tuple, inModalities=-1, inChannels=-1, cuda=False, args=
         in_cuda = cuda
 
     if args.dataset_name == "mrihand":
-        input_tensor, target, affine_mat, joint = input_tuple
+        input_tensor, target, affine_mat, joint, input_scale = input_tuple
         if in_cuda:
             input_tensor, target = input_tensor.cuda(), target.cuda()
             affine_mat, joint = affine_mat.cuda(), joint.cuda()
-            return (input_tensor, affine_mat, joint), (target, joint)
+            if isinstance(input_scale, torch.Tensor):
+                input_scale = input_scale.cuda()
+            return (input_tensor, affine_mat, joint, input_scale), (target, joint)
     
     if modalities == 4:
         if channels == 4:

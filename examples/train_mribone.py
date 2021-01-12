@@ -78,8 +78,12 @@ def get_arguments():
     parser.add_argument('--lr', default=1e-2, type=float,  help='learning rate (default: 1e-2)')
     parser.add_argument('--split', default=0.7, type=float, help='Select percentage of training data(default: 0.8)')
     parser.add_argument('--cuda', action='store_true', default=True)
-    parser.add_argument('--segonly', action='store_true', default=True)
+    
+    parser.add_argument('--segonly', action='store_true', default=False)
     parser.add_argument('--segnet', type=str, default="unet3d")
+    parser.add_argument('--joint_center_idx', type=int, default=0)
+    parser.add_argument('--use_lbs', action='store_true', default=False)
+
     parser.add_argument('--loadData', default=True)
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')

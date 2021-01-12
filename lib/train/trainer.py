@@ -6,7 +6,7 @@ from lib.visual3D_temp.BaseWriter import TensorboardWriter
 
 def poly_lr(epoch, max_epochs, initial_lr, exponent=0.9):
     return initial_lr * (1 - epoch / max_epochs)**exponent
-
+from lib.utils.evalutil import EvalUtil
 
 class Trainer:
     """
@@ -70,7 +70,7 @@ class Trainer:
             input_tensor, target = prepare_input(input_tuple=input_tuple, args=self.args)
             # input_tensor.requires_grad = True
             output = self.model(input_tensor)
-            loss_dice, per_ch_score = self.criterion(output, target)
+            loss_dice, per_ch_score, _ = self.criterion(output, target, val=False)
             loss_dice.backward()
             self.optimizer.step()
 
@@ -92,10 +92,9 @@ class Trainer:
                 # input_tensor.requires_grad = False
 
                 output = self.model(input_tensor)
-                loss, per_ch_score = self.criterion(output, target)
-
+                loss, per_ch_score, meta = self.criterion(output, target, val=True)
                 self.writer.update_scores(batch_idx, loss.item(), per_ch_score, 'val',
-                                          epoch * self.len_epoch + batch_idx)
+                                          epoch * self.len_epoch + batch_idx, meta)
 
         self.writer.display_terminal(len(self.valid_data_loader), epoch, mode='val', summary=True)
 

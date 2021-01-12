@@ -84,7 +84,7 @@ class BoneLayer(Module):
         # Global rigid transformation
         th_results = []
 
-        th_j = self.th_joints
+        th_j = self.th_joints.repeat(batch_size, 1, 1)
         # th_j = torch.matmul(self.th_J_regressor, self.th_v_template).repeat(batch_size, 1, 1)
         root_j = th_j[:, 0, :].contiguous().view(batch_size, 3, 1)
         th_results.append(th_with_zeros(torch.cat([root_rot, root_j], 2)))
@@ -130,22 +130,13 @@ class BoneLayer(Module):
 
         th_T = torch.matmul(th_results2, self.th_weights.transpose(0, 1))
 
-        th_rest_shape_h = torch.cat([self.th_v_template.transpose(2, 1),
+        th_rest_shape_h = torch.cat([self.th_v_template.repeat(batch_size, 1, 1).transpose(2, 1),
                                      torch.ones((batch_size, 1, self.th_v_template.shape[1]), dtype=th_T.dtype,
                                                 device=th_T.device), ], 1)
 
         th_verts = (th_T * th_rest_shape_h.unsqueeze(1)).sum(2).transpose(2, 1)
         th_verts = th_verts[:, :, :3]
         th_jtr = torch.stack(th_results_global, dim=1)[:, :, :3, 3]
-
-        # calculate normals
-        th_rest_v_normals = torch.cat([
-            self.th_v_normals.transpose(2, 1),
-            torch.zeros((batch_size, 1, self.th_v_normals.shape[1]),
-                        dtype=th_T.dtype,
-                        device=th_T.device), ], 1)
-        th_v_normals = (th_T * th_rest_v_normals.unsqueeze(1)).sum(2).transpose(2, 1)
-        th_v_normals = th_v_normals[:, :, :3]
 
         # scaling
         if th_global_scale is not None:
@@ -163,6 +154,7 @@ class BoneLayer(Module):
 
         # translation
         if root_position is not None:
+            root_position = root_position.view(batch_size, 1, 3)
             center_joint = th_jtr[:, self.center_idx].unsqueeze(1)
             offset = root_position - center_joint
             th_jtr = th_jtr + offset

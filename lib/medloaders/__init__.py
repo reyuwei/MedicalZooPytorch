@@ -29,9 +29,9 @@ def generate_datasets(args, path='.././datasets'):
         train_lst = split['train']
         val_lst = split['val']
         train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=args.dim,
-                                          lst=train_lst, load=args.loadData)
+                                          lst=train_lst, load=args.loadData, seg_only=args.segonly)
         val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=args.dim, 
-                                           lst=val_lst, load=args.loadData)
+                                           lst=val_lst, load=args.loadData, seg_only=args.segonly)
 
     elif args.dataset_name == "iseg2017":
         total_data = 10

@@ -12,6 +12,7 @@ from lib.medloaders.medical_loader_utils import find_random_crop_dim
 from lib.medloaders.medical_image_process import crop_img
 import torch
 from pathlib import Path
+import scipy.ndimage as ndimage
 
 def mask2xyz(mask, affine):
     grid = create_grid(mask.shape)
@@ -68,7 +69,7 @@ def crop_pad(t1, s, affine, crop_size):
     pad_1 = (0,0)
     pad_2 = (0,0)
     if full_vol_dim[0] < crop_size[0]:
-        gap = np.ceil(crop_size[0] - full_vol_dim[0] / 2)
+        gap = np.ceil((crop_size[0] - full_vol_dim[0]) / 2)
         pad_0 =  (int(gap), int(gap))
     if full_vol_dim[1] < crop_size[1]:
         gap = np.ceil((crop_size[1] - full_vol_dim[1]) / 2)
@@ -99,12 +100,36 @@ def crop_pad(t1, s, affine, crop_size):
     return t1, s, affine
 
 
+def scale_pad(t1, crop_size):
+    full_vol_dim = t1.shape
+    # pad zero
+    pad_0 = (0,0)
+    pad_1 = (0,0)
+    pad_2 = (0,0)
+    pad_goal = np.max([np.max(full_vol_dim), np.max(crop_size)])
+    cube_pad_size = [pad_goal, pad_goal, pad_goal]
+    if full_vol_dim[0] < cube_pad_size[0]:
+        gap = np.ceil((cube_pad_size[0] - full_vol_dim[0]) / 2)
+        pad_0 =  (int(gap), int(gap))
+    if full_vol_dim[1] < cube_pad_size[1]:
+        gap = np.ceil((cube_pad_size[1] - full_vol_dim[1]) / 2)
+        pad_1 =  (int(gap), int(gap))
+    if full_vol_dim[2] < cube_pad_size[2]:
+        gap = np.ceil((cube_pad_size[2] - full_vol_dim[2]) / 2)
+        pad_2 = (int(gap), int(gap))
+
+    t1 = np.pad(t1, (pad_0, pad_1, pad_2), 'constant')
+    depth, height, width = t1.shape
+    scale = [crop_size[0] * 1.0 / depth, crop_size[1] * 1.0 / height, crop_size[2] * 1.0 / width]
+    scaled = ndimage.interpolation.zoom(t1, scale, order=3)
+    return scaled
+
 
 
 class MRIHandDataset(Dataset):
     # "/p300/liyuwei/DATA_mri/Hand_MRI_segdata/nnUNet_preprocessed/Task1074_finegrained_bone_real_90"
-    def __init__(self, args, mode, dataset_path='./datasets', crop=False, crop_dim=(200, 200, 200), 
-                 lst=None, load=False, voxel_spacing=[0.5, 0.5, 0.5]):
+    def __init__(self, args, mode, dataset_path='./datasets', crop_dim=(200, 200, 200), 
+                 lst=None, load=False, voxel_spacing=[0.5, 0.5, 0.5], seg_only=False):
         """
         :param mode: 'train','val','test'
         :param dataset_path: root dataset folder
@@ -122,6 +147,7 @@ class MRIHandDataset(Dataset):
         self.crop_size = crop_dim
         self.bbx_scale = 1.25
         self.full_volume = None
+        self.seg_only = seg_only
 
         # subvol_spacing = str(self.voxel_spacing[0]) + 'x' + str(self.voxel_spacing[1]) + 'x' + str(self.voxel_spacing[2])
         subvol = '_vol_' + str(self.voxel_spacing[0]) + 'x' + str(self.voxel_spacing[1]) + 'x' + str(self.voxel_spacing[2])
@@ -232,19 +258,38 @@ class MRIHandDataset(Dataset):
         if t1.shape != s.shape:
             print(item['input'])
 
-        t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
-        # print(t1.shape)
-        # print(s.shape)
-
         joint_tensor = torch.from_numpy(joint).float()
+        
+        if self.seg_only:
+            augmented_t1_scale = {}
+            t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
 
-        if self.mode == "train" and self.augmentation:
-            [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
-            return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy()), \
-                    torch.from_numpy(augmented_affine).float(), joint_tensor
+            if self.mode == "train" and self.augmentation:
+                [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
+                return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy()), \
+                        torch.from_numpy(augmented_affine).float(), joint_tensor, augmented_t1_scale
+            else:
+                affine_tensor = torch.from_numpy(affine).float()
+                return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor, augmented_t1_scale
+        
+        else:
+            if self.mode == "train" and self.augmentation:
+                [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
+                
+                augmented_t1_scale = scale_pad(augmented_t1, self.crop_size)
+                augmented_t1_crop, augmented_s_crop, augmented_affine_crop = crop_pad(augmented_t1, augmented_s, augmented_affine, self.crop_size)
+                
+                return torch.FloatTensor(augmented_t1_crop.copy()).unsqueeze(0), torch.FloatTensor(augmented_s_crop.copy()), \
+                        torch.from_numpy(augmented_affine_crop).float(), joint_tensor,  torch.FloatTensor(augmented_t1_scale.copy()).unsqueeze(0)
+            else:
+                scaled_t1 = scale_pad(t1, self.crop_size)
+                t1_crop, s_crop, affine_crop = crop_pad(t1, s, affine, self.crop_size)
+                affine_tensor = torch.from_numpy(affine_crop).float()
+                return torch.FloatTensor(t1_crop).unsqueeze(0), torch.FloatTensor(s_crop), affine_tensor, \
+                        joint_tensor, torch.FloatTensor(scaled_t1).unsqueeze(0)
 
-        affine_tensor = torch.from_numpy(affine).float()
-        return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor
+
+
 
 
 if __name__ == "__main__":
@@ -263,13 +308,13 @@ if __name__ == "__main__":
     
     args = tmp()
     train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=(128, 128, 128),
-                                    lst=train_lst, load=True)
+                                    lst=train_lst, load=True, seg_only=False)
     val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=(32, 32, 32), 
-                                    lst=val_lst, load=True)
+                                    lst=val_lst, load=True, seg_only=False)
 
     for i in range(len(train_loader)):
         print(3)
-        t1, tar = train_loader.__getitem__(3)
+        t1, tar, affine, joint, scaled_t1 = train_loader.__getitem__(3)
         print(t1.shape)
         print(tar.shape)
 

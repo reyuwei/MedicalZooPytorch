@@ -54,7 +54,7 @@ class MRIBoneNet(BaseModel):
             self.center_idx = center_idx
             self.use_jreg = not self.use_lbs
             template_dict = np.load("lib/bonepth/bone_template.pkl", allow_pickle=True)
-            self.bonelayer = BoneLayer(template_dict, center_idx=self.center_idx, use_jreg=False)
+            self.bonelayer = BoneLayer(template_dict, center_idx=self.center_idx, use_jreg=self.use_jreg)
             self.seg_in_channels = 2    
         else:
             self.seg_in_channels = 1
@@ -99,7 +99,7 @@ class MRIBoneNet(BaseModel):
         mask = mask_flat.view(x.shape)
         return mask
 
-    def forward_bone(self, x, affine, root):
+    def forward_bone(self, x, x_full, affine, root):
         '''
         x: [B, 1, H, W, D]
         feature: [B, FC, 32, 32, 32]
@@ -108,14 +108,14 @@ class MRIBoneNet(BaseModel):
         proj_mask: [B, C, H, W, D]
         '''
         batch_size = x.shape[0]
-        _, _, _, x4 = self.encoder(x)
+        _, _, _, x4 = self.encoder(x_full)
         flattened = self.flatten(x4)
         
         pose = self.fc_pose(flattened).view(batch_size,-1, 3)
         shape = self.fc_shape(flattened).view(batch_size, -1)
 
         if self.use_lbs: # pose and scale
-            scale = nn.functional.Tanh(shape) + torch.ones_like(shape)
+            scale = torch.tanh(shape) + torch.ones_like(shape)
             verts, joints = self.bonelayer(pose, th_scale=scale, root_position=root)
         else: # pose and shape
             verts, joints = self.bonelayer(pose, th_shape_param=shape, root_position=root)
@@ -131,13 +131,13 @@ class MRIBoneNet(BaseModel):
 
 
     def forward(self, x):
-        input_x, affine, joint = x
+        input_x, affine, joint, input_x_full = x
         if self.seg_only:
             out = self.segnet(input_x)
             return out, None, None, None
         else:
             root = joint[:, self.center_idx, :]
-            self.forward_bone(input_x, affine, root)
+            return self.forward_bone(input_x, input_x_full, affine, root)
 
     def test(self,device='cpu'):
         input_tensor = torch.rand(1, 1, 128, 128, 128)
