@@ -14,13 +14,15 @@ class BoneLayer(Module):
         'side', 'center_idx'
     ]
 
-    def __init__(self, template_ske: dict, center_idx=0, use_jreg=True):
+    def __init__(self, template_ske: dict, center_idx=0, ncomps_shape=35, use_jreg=True, use_shapepca=True):
         super().__init__()
         self.center_idx = center_idx
         self.ncomps = 20 * 3
         self.bone_data = template_ske
+        self.use_shapepca = use_shapepca
+        self.ncomps_shape = ncomps_shape
+        self.use_jreg = use_jreg
 
-        self.register_buffer('th_v_template', torch.from_numpy(self.bone_data['v_template']).float().unsqueeze(0))
         self.register_buffer('th_v_normals',
                              torch.from_numpy(self.bone_data['v_template_normals']).float().unsqueeze(0))
         self.register_buffer('th_weights', torch.from_numpy(self.bone_data['weights']).float())
@@ -30,8 +32,17 @@ class BoneLayer(Module):
         self.verts_separater = self.bone_data['verts_separater']
         self.faces_separater = self.bone_data['faces_separater']
 
-        if use_jreg:
-            self.J_reg = np.load("../../data/pca/J_regressor.pkl", allow_pickle=True)
+        shape_pca_dict = np.load("lib/bonepth/shape_pca.pkl", allow_pickle=True)
+        mean = shape_pca_dict['mean']
+        basis = shape_pca_dict['basis']
+        self.register_buffer('th_v_template', torch.from_numpy(mean.reshape(-1, 3)).float().unsqueeze(0))
+        th_shapedirs = torch.from_numpy(basis[:self.ncomps_shape, ...].reshape(self.ncomps_shape, -1, 3)).float().permute(1, 2, 0)
+            # torch.from_numpy(basis[:self.ncomps_shape, ...].reshape(self.ncomps_shape, -1, 3)).float().permute(1, 2, 0))
+        self.register_buffer("th_shapedirs", th_shapedirs)
+        self.register_buffer('th_betas', torch.zeros(self.ncomps_shape).float())
+
+        if self.use_jreg:
+            self.J_reg = np.load("lib/bonepth/J_regressor.pkl", allow_pickle=True)
             self.register_buffer("th_J_regressor", torch.from_numpy(self.J_reg).float())
             th_j = torch.matmul(self.th_J_regressor, self.th_v_template)
         else:
@@ -81,11 +92,23 @@ class BoneLayer(Module):
             th_full_pose = th_full_pose.view(batch_size, -1, 3)
             root_rot = rodrigues_layer.batch_rodrigues(th_full_pose[:, 0]).view(batch_size, 3, 3)
 
+
+        if th_shape_param is None or self.use_shapepca is False:
+            th_betas = self.th_betas.repeat(batch_size, 1)
+            th_v_shaped = torch.matmul(self.th_shapedirs,
+                                    th_betas.transpose(1, 0)).permute(2, 0, 1) + self.th_v_template
+        else:
+            th_v_shaped = torch.matmul(self.th_shapedirs,
+                                    th_shape_param.transpose(1, 0)).permute(2, 0, 1) + self.th_v_template
+
+
+        if self.use_jreg:
+            th_j = torch.matmul(self.th_J_regressor, th_v_shaped)
+        else:
+            th_j = self.th_joints.repeat(batch_size, 1, 1)
+
         # Global rigid transformation
         th_results = []
-
-        th_j = self.th_joints.repeat(batch_size, 1, 1)
-        # th_j = torch.matmul(self.th_J_regressor, self.th_v_template).repeat(batch_size, 1, 1)
         root_j = th_j[:, 0, :].contiguous().view(batch_size, 3, 1)
         th_results.append(th_with_zeros(torch.cat([root_rot, root_j], 2)))
 
@@ -130,8 +153,8 @@ class BoneLayer(Module):
 
         th_T = torch.matmul(th_results2, self.th_weights.transpose(0, 1))
 
-        th_rest_shape_h = torch.cat([self.th_v_template.repeat(batch_size, 1, 1).transpose(2, 1),
-                                     torch.ones((batch_size, 1, self.th_v_template.shape[1]), dtype=th_T.dtype,
+        th_rest_shape_h = torch.cat([th_v_shaped.transpose(2, 1),
+                                     torch.ones((batch_size, 1, th_v_shaped.shape[1]), dtype=th_T.dtype,
                                                 device=th_T.device), ], 1)
 
         th_verts = (th_T * th_rest_shape_h.unsqueeze(1)).sum(2).transpose(2, 1)

@@ -166,6 +166,11 @@ class MRIHandDataset(Dataset):
                             augment3D.RandomShift(),
                             augment3D.RandomRotation()], p=0.5)
 
+        if os.path.exists(os.path.join(self.root, "gt_param_dict.pkl")):
+            self.gt_param = np.load(os.path.join(self.root, "gt_param_dict.pkl"), allow_pickle=True)
+        else:
+            self.gt_param = None
+        
         if load and os.path.exists(self.save_name):
             ## load pre-generated data
             self.data_dict = utils.load_list(self.save_name)
@@ -177,16 +182,27 @@ class MRIHandDataset(Dataset):
         self.labels = []
         self.list_joint = []
         self.joint_bbx = []
-        for x in os.listdir(self.root):
-            if os.path.isdir(os.path.join(self.root, x)):
-                if self.split_lst is not None:
-                    if x in self.split_lst:
-                        self.list_t1.append(os.path.join(self.root, x, x + "_t1.nii"))
-                        self.labels.append(os.path.join(self.root, x, x + "_finegrained_bone.nii"))
-                        self.list_joint.append(os.path.join(self.root, x, x + "_joints_3d.txt"))
-                        joint_idx = np.loadtxt(os.path.join(self.root, x, x + "_joints_idx.txt")).reshape(-1, 3)
-                        self.joint_bbx.append(self.create_bbx_from_joint(joint_idx, scale=self.bbx_scale))
-        
+
+
+
+        if "t1" in self.root:
+            for x in self.split_lst:
+                self.list_t1.append(os.path.join(self.root, x + "_t1.nii"))
+                self.labels.append(os.path.join(self.root,  x + "_finegrained_bone_49D.nii"))
+                self.list_joint.append(os.path.join(self.root, x + "_joints_3d.txt"))
+                joint_idx = np.loadtxt(os.path.join(self.root, x + "_joints_idx.txt")).reshape(-1, 3)
+                self.joint_bbx.append(self.create_bbx_from_joint(joint_idx, scale=self.bbx_scale))
+        else:
+            for x in os.listdir(self.root):
+                if os.path.isdir(os.path.join(self.root, x)):
+                    if self.split_lst is not None:
+                        if x in self.split_lst:
+                            self.list_t1.append(os.path.join(self.root, x, x + "_t1.nii"))
+                            self.labels.append(os.path.join(self.root, x, x + "_finegrained_bone.nii"))
+                            self.list_joint.append(os.path.join(self.root, x, x + "_joints_3d.txt"))
+                            joint_idx = np.loadtxt(os.path.join(self.root, x, x + "_joints_idx.txt")).reshape(-1, 3)
+                            self.joint_bbx.append(self.create_bbx_from_joint(joint_idx, scale=self.bbx_scale))
+   
         self.create_input_data()
         
         self.affine = self.data_dict[0]['affine']
@@ -202,7 +218,10 @@ class MRIHandDataset(Dataset):
         print(self.mode, "Dataset samples :", total)
 
         for i in range(total):
-            name = Path(self.list_t1[i]).parent.stem
+            if "t1" in self.root:
+                name = Path(self.list_t1[i]).stem[:-3]
+            else:
+                name = Path(self.list_t1[i]).parent.stem
             print(name)
             f_t1 = self.sub_vol_path + name + '_t1.npy'
             f_t1_mask = self.sub_vol_path + name + '_t1_gt.npy'
@@ -244,13 +263,39 @@ class MRIHandDataset(Dataset):
         bbx = {"center": bbx_center, "size": bbx_size, "topleft": bbx_topleft}
         return bbx
 
-    
-
-
     def __getitem__(self, index):
+        input_tensor, target, affine_mat, joint, input_scale, params_gt = self.fetch(index)
+        if "theta" in params_gt:
+            theta = params_gt['theta']
+            beta = params_gt['beta']
+            trans = params_gt['trans']
+        else:
+            theta = torch.FloatTensor()
+            beta = torch.FloatTensor()
+            trans = torch.FloatTensor()
+        return input_tensor, target, affine_mat, joint, input_scale, theta, beta, trans
+
+
+    def fetch(self, index):
         item = self.data_dict[index]
         if not os.path.exists(item['input']):
             return
+        
+        if self.gt_param is not None:
+            name = Path(item['input']).stem[:-3]
+            params = self.gt_param[name]
+            theta = torch.from_numpy(params['theta']).float()
+            beta = torch.from_numpy(params['beta']).float()
+            trans_back2gt = torch.from_numpy(params['trans_back2gt']).float()
+            param_dict = {
+                'theta': theta,
+                'beta': beta,
+                'trans': trans_back2gt
+            }
+        else:
+            param_dict = {}
+
+
         t1 = np.load(item['input'])
         s = np.load(item['target_mask'])
         joint = item['joint']
@@ -267,10 +312,10 @@ class MRIHandDataset(Dataset):
             if self.mode == "train" and self.augmentation:
                 [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
                 return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy()), \
-                        torch.from_numpy(augmented_affine).float(), joint_tensor, augmented_t1_scale
+                        torch.from_numpy(augmented_affine).float(), joint_tensor, augmented_t1_scale, param_dict
             else:
                 affine_tensor = torch.from_numpy(affine).float()
-                return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor, augmented_t1_scale
+                return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor, augmented_t1_scale, param_dict
         
         else:
             if self.mode == "train" and self.augmentation:
@@ -280,21 +325,20 @@ class MRIHandDataset(Dataset):
                 augmented_t1_crop, augmented_s_crop, augmented_affine_crop = crop_pad(augmented_t1, augmented_s, augmented_affine, self.crop_size)
                 
                 return torch.FloatTensor(augmented_t1_crop.copy()).unsqueeze(0), torch.FloatTensor(augmented_s_crop.copy()), \
-                        torch.from_numpy(augmented_affine_crop).float(), joint_tensor,  torch.FloatTensor(augmented_t1_scale.copy()).unsqueeze(0)
+                        torch.from_numpy(augmented_affine_crop).float(), joint_tensor,  torch.FloatTensor(augmented_t1_scale.copy()).unsqueeze(0), param_dict
             else:
                 scaled_t1 = scale_pad(t1, self.crop_size)
                 t1_crop, s_crop, affine_crop = crop_pad(t1, s, affine, self.crop_size)
                 affine_tensor = torch.from_numpy(affine_crop).float()
                 return torch.FloatTensor(t1_crop).unsqueeze(0), torch.FloatTensor(s_crop), affine_tensor, \
-                        joint_tensor, torch.FloatTensor(scaled_t1).unsqueeze(0)
+                        joint_tensor, torch.FloatTensor(scaled_t1).unsqueeze(0), param_dict
 
 
 
 
 
 if __name__ == "__main__":
-    path = '/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final'
-    total_data = 90
+    path = '/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1'
     split_pkl = os.path.join(path, "splits_final.pkl")
     split = np.load(split_pkl, allow_pickle=True)[0]
     train_lst = split['train']
@@ -314,9 +358,9 @@ if __name__ == "__main__":
 
     for i in range(len(train_loader)):
         print(3)
-        t1, tar, affine, joint, scaled_t1 = train_loader.__getitem__(3)
-        print(t1.shape)
-        print(tar.shape)
+        t1, tar, affine, joint, scaled_t1, param_dict = train_loader.__getitem__(3)
+        print(param_dict)
+
 
     # for i in range(len(val_loader)):
     #     print(i)

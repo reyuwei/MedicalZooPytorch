@@ -38,12 +38,18 @@ def main():
     print(args)
     with open(args.save + 'args.txt', 'w') as f:
         json.dump(args.__dict__, f, indent=2)
+    with open(args.save + '/args.txt', 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     print("Number of available GPUs: {}".format(torch.cuda.device_count()))
 
+    # training_generator, val_generator, full_volume, affine = \
+    #                 medical_loaders.generate_datasets(args, path='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final')
+    # training_generator, val_generator, full_volume, affine = \
+    #             medical_loaders.generate_datasets(args, path='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1')
     training_generator, val_generator, full_volume, affine = \
-                    medical_loaders.generate_datasets(args, path='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final')
+                medical_loaders.generate_datasets(args, path=args.dataset)
     model, optimizer = medzoo.create_model(args)
     criterion = JoinLoss(classes=args.classes, skip_index_after=args.classes)
 
@@ -59,6 +65,7 @@ def main():
 
 def get_arguments():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str, default='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final')
     parser.add_argument('--batchSz', type=int, default=4)
     parser.add_argument('--dataset_name', type=str, default="mrihand")
     parser.add_argument('--dim', nargs="+", type=int, default=(128, 128, 128))
@@ -83,6 +90,7 @@ def get_arguments():
     parser.add_argument('--segnet', type=str, default="unet3d")
     parser.add_argument('--joint_center_idx', type=int, default=0)
     parser.add_argument('--use_lbs', action='store_true', default=False)
+    parser.add_argument('--encoderonly', action='store_true', default=False)
 
     parser.add_argument('--loadData', default=True)
     parser.add_argument('--resume', default='', type=str, metavar='PATH',

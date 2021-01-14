@@ -5,6 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "test",
+            "type": "python",
+            "request": "launch",
+            "program": "examples/test_mribone.py",
+            "console": "integratedTerminal",
+            "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
+                "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH"},
+        },
+        {
             "name": "resume",
             "type": "python",
             "request": "launch",
@@ -13,6 +22,9 @@
             "args": ["--segonly", "--batchSz", "5", 
                 "--gpu", "1", 
                 "--resume", "/p300/liyuwei/MRI_Bonenet/saved_models/MRIBONENET_checkpoints/MRIBONENET_10_01___12_15_mrihand_"],
+            "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
+                    "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH",
+                    "LD_LIBRARY_PATH": ""},
             "console": "integratedTerminal"
         },
         {
@@ -21,14 +33,15 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "env": {"envFile":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/export.env"},
+            "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
+                "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH"},
         },
         {
             "name": "train",
             "type": "python",
             "request": "launch",
-            "env": {"PYTHONPATH":"\"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python\":$PYTHONPATH", 
-                        "PATH":"\"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin\":$PATH"},
+            "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
+                "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH"},
             "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
@@ -37,8 +50,9 @@
             "name": "train with bone",
             "type": "python",
             "request": "launch",
-            "args": ["--segnet", "unet3d", "--joint_center_idx", "0", "--use_lbs", "--gpu", "3", "--batchSz", "2"],
-            "env": {"envFile":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/export.env"},
+            "args": ["--segnet", "unet3d", "--joint_center_idx", "10", "--gpu", "0", "--batchSz", "2", "--encoderonly", "--dataset", "/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1"],
+            "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
+                "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH"},
             "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"

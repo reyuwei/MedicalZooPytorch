@@ -1,3 +1,4 @@
+from lib.losses3D.basic import expand_as_one_hot
 import sys
 sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
 import os
@@ -22,7 +23,7 @@ import numpy as np
 
 class MRIBoneNet(BaseModel):
     def __init__(self, in_channels, classes=21, base_n_filter=8, seg_only=False, 
-                    center_idx=8, use_lbs=True, seg_net="unet3d"):
+                    center_idx=8, use_lbs=True, seg_net="unet3d", encoder_only=False):
         super(MRIBoneNet, self).__init__()
 
         self.seg_only = seg_only
@@ -30,8 +31,8 @@ class MRIBoneNet(BaseModel):
         self.n_classes = classes
         self.base_n_filter=base_n_filter
 
-        self.pose_param_dim = globalvar.STATIC_JOINT_NUM*3
-        self.shape_param_dim = globalvar.STATIC_JOINT_NUM
+        self.pose_param_dim = globalvar.STATIC_BONE_NUM*3#?
+        self.shape_param_dim = 35#?
 
         self.use_lbs = use_lbs
         if not self.seg_only:
@@ -53,19 +54,22 @@ class MRIBoneNet(BaseModel):
 
             self.center_idx = center_idx
             self.use_jreg = not self.use_lbs
+            self.use_shapepca = not self.use_lbs
             template_dict = np.load("lib/bonepth/bone_template.pkl", allow_pickle=True)
-            self.bonelayer = BoneLayer(template_dict, center_idx=self.center_idx, use_jreg=self.use_jreg)
+            # joint_regressor = np.load("lib/bonepth/J_regressor.pkl", allow_pickle=True)
+            self.bonelayer = BoneLayer(template_dict, center_idx=self.center_idx, ncomps_shape=self.shape_param_dim, use_jreg=self.use_jreg, use_shapepca=self.use_shapepca)
             self.seg_in_channels = 2    
         else:
             self.seg_in_channels = 1
 
-
-        if seg_net == "unet3d":
-            self.segnet = UNet3D(in_channels=self.seg_in_channels, n_classes=self.n_classes, base_n_filter=self.base_n_filter)
-        elif seg_net == "vnet":
-            self.segnet = VNet(in_channels=self.seg_in_channels, classes=self.n_classes)
-        else:
-            assert "no such segnet!!"
+        self.encoder_only = encoder_only
+        if not self.encoder_only:
+            if seg_net == "unet3d":
+                self.segnet = UNet3D(in_channels=self.seg_in_channels, n_classes=self.n_classes, base_n_filter=self.base_n_filter)
+            elif seg_net == "vnet":
+                self.segnet = VNet(in_channels=self.seg_in_channels, classes=self.n_classes)
+            else:
+                assert "no such segnet!!"
 
 
     def map(self, x, affine, verts):
@@ -93,13 +97,18 @@ class MRIBoneNet(BaseModel):
             if counter_v == v:
                 continue
             id += 1
-            sign = kaolin.ops.mesh.check_sign(verts[counter_v:v, :], self.bonelayer.th_faces[counter_f:f, :] - counter_v, points) # B, 128**3
+            # print(counter_v, v, counter_f, f)
+            bone_verts = verts[:, counter_v:v, :]
+            bone_faces = self.bonelayer.th_faces[counter_f:f, :] - counter_v
+            sign = kaolin.ops.mesh.check_sign(bone_verts, bone_faces, points) # B, 128**3
             mask_flat[sign==True] = id
+            counter_v = v
+            counter_f = f
 
         mask = mask_flat.view(x.shape)
         return mask
 
-    def forward_bone(self, x, x_full, affine, root):
+    def forward_bone(self, x, x_full, affine, root, trans_mat):
         '''
         x: [B, 1, H, W, D]
         feature: [B, FC, 32, 32, 32]
@@ -116,14 +125,26 @@ class MRIBoneNet(BaseModel):
 
         if self.use_lbs: # pose and scale
             scale = torch.tanh(shape) + torch.ones_like(shape)
-            verts, joints = self.bonelayer(pose, th_scale=scale, root_position=root)
+            verts_con, joints_con = self.bonelayer(pose, th_scale=scale)
         else: # pose and shape
-            verts, joints = self.bonelayer(pose, th_shape_param=shape, root_position=root)
+            verts_con, joints_con = self.bonelayer(pose, th_shape_param=shape)
+        
+        hom = torch.ones(verts_con.shape[0], verts_con.shape[1], 1).type(torch.float).to(verts_con.device)
+        verts_hom = torch.cat([verts_con, hom], dim=-1).permute(0, 2, 1)
+        verts = torch.bmm(trans_mat, verts_hom).permute(0, 2, 1)[:, :, :3]  # N, volume_size**3, 3
+
+        homj = torch.ones(joints_con.shape[0],joints_con.shape[1], 1).type(torch.float).to(joints_con.device)
+        joints_hom = torch.cat([joints_con, homj], dim=-1).permute(0, 2, 1)
+        joints = torch.bmm(trans_mat, joints_hom).permute(0, 2, 1)[:, :, :3]  # N, volume_size**3, 3
 
         proj_mask = self.map(x, affine, verts)
 
-        x_cat = torch.cat([x, proj_mask], dim=1)
-        out = self.segnet(x_cat)
+        if self.encoder_only:
+            x_cat = torch.cat([x, proj_mask], dim=1)
+            out = self.segnet(x_cat)
+        else:
+            out = expand_as_one_hot(proj_mask.squeeze(), self.n_classes)
+
         if self.use_lbs:
             return out, joints, pose, scale
         else:
@@ -131,13 +152,13 @@ class MRIBoneNet(BaseModel):
 
 
     def forward(self, x):
-        input_x, affine, joint, input_x_full = x
+        input_x, affine, joint, input_x_full, trans = x
         if self.seg_only:
             out = self.segnet(input_x)
             return out, None, None, None
         else:
             root = joint[:, self.center_idx, :]
-            return self.forward_bone(input_x, input_x_full, affine, root)
+            return self.forward_bone(input_x, input_x_full, affine, root, trans)
 
     def test(self,device='cpu'):
         input_tensor = torch.rand(1, 1, 128, 128, 128)
