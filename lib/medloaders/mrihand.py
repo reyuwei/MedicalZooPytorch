@@ -100,7 +100,7 @@ def crop_pad(t1, s, affine, crop_size):
     return t1, s, affine
 
 
-def scale_pad(t1, crop_size):
+def scale_pad(t1,s,affine, crop_size):
     full_vol_dim = t1.shape
     # pad zero
     pad_0 = (0,0)
@@ -119,11 +119,52 @@ def scale_pad(t1, crop_size):
         pad_2 = (int(gap), int(gap))
 
     t1 = np.pad(t1, (pad_0, pad_1, pad_2), 'constant')
+    s = np.pad(s, (pad_0, pad_1, pad_2), 'constant')
+
     depth, height, width = t1.shape
     scale = [crop_size[0] * 1.0 / depth, crop_size[1] * 1.0 / height, crop_size[2] * 1.0 / width]
+    voxel_size = [0.5, 0.5, 0.5]
+    print(np.array(voxel_size) / np.array(scale))
     scaled = ndimage.interpolation.zoom(t1, scale, order=3)
-    return scaled
+    scaled_s = ndimage.interpolation.zoom(s, scale, order=0)
+    return scaled, scaled_s
 
+
+def even_pad(t1, s, affine, crop_size):
+    full_vol_dim = t1.shape
+    cov = 32
+    # pad zero
+    pad_0 = (0,0)
+    pad_1 = (0,0)
+    pad_2 = (0,0)
+    cube_pad_size = np.array(full_vol_dim)
+    for i in range(len(cube_pad_size)):
+        if cube_pad_size[i] % cov!=0:
+            cube_pad_size[i] = ((full_vol_dim[i] // cov) + 1) * cov
+            
+    # print(cube_pad_size)
+
+    if full_vol_dim[0] < cube_pad_size[0]:
+        gap = np.ceil((cube_pad_size[0] - full_vol_dim[0]) / 2)
+        pad_0 =  (int(gap), int(gap))
+    if full_vol_dim[1] < cube_pad_size[1]:
+        gap = np.ceil((cube_pad_size[1] - full_vol_dim[1]) / 2)
+        pad_1 =  (int(gap), int(gap))
+    if full_vol_dim[2] < cube_pad_size[2]:
+        gap = np.ceil((cube_pad_size[2] - full_vol_dim[2]) / 2)
+        pad_2 = (int(gap), int(gap))
+
+    t1 = np.pad(t1, (pad_0, pad_1, pad_2), 'constant')
+    s = np.pad(s, (pad_0, pad_1, pad_2), 'constant')
+
+    crop_size = cube_pad_size
+    crop_start_fix = [0,0,0] 
+    t1, crop_mat = crop_img(t1, crop_size, crop_start_fix)
+    s, _ = crop_img(s, crop_size, crop_start_fix)
+    # print(t1.shape)
+    # print(s.shape)
+
+    return t1, s
 
 
 class MRIHandDataset(Dataset):
@@ -307,7 +348,9 @@ class MRIHandDataset(Dataset):
         
         if self.seg_only:
             augmented_t1_scale = {}
-            t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
+            # t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
+            # t1, s = scale_pad(t1, s, affine, self.crop_size)
+            t1, s = even_pad(t1, s, affine, self.crop_size)
 
             if self.mode == "train" and self.augmentation:
                 [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
@@ -321,13 +364,13 @@ class MRIHandDataset(Dataset):
             if self.mode == "train" and self.augmentation:
                 [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
                 
-                augmented_t1_scale = scale_pad(augmented_t1, self.crop_size)
+                augmented_t1_scale, _ = scale_pad(augmented_t1, self.crop_size)
                 augmented_t1_crop, augmented_s_crop, augmented_affine_crop = crop_pad(augmented_t1, augmented_s, augmented_affine, self.crop_size)
                 
                 return torch.FloatTensor(augmented_t1_crop.copy()).unsqueeze(0), torch.FloatTensor(augmented_s_crop.copy()), \
                         torch.from_numpy(augmented_affine_crop).float(), joint_tensor,  torch.FloatTensor(augmented_t1_scale.copy()).unsqueeze(0), param_dict
             else:
-                scaled_t1 = scale_pad(t1, self.crop_size)
+                scaled_t1, _ = scale_pad(t1, self.crop_size)
                 t1_crop, s_crop, affine_crop = crop_pad(t1, s, affine, self.crop_size)
                 affine_tensor = torch.from_numpy(affine_crop).float()
                 return torch.FloatTensor(t1_crop).unsqueeze(0), torch.FloatTensor(s_crop), affine_tensor, \

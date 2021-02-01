@@ -29,28 +29,39 @@ def mask_error(normalize_pred, gt):
     voxel_spacing = [0.5, 0.5, 0.5]
     connectivity = 1
     
-    hds = []
     gt_expand = expand_as_one_hot(gt, 21)
     per_channel_dice = compute_per_channel_dice(normalize_pred, gt_expand)
     
     normalize_pred = torch.argmax(normalize_pred, dim=1).squeeze()
-    print(normalize_pred.shape)
+    # print(normalize_pred.shape)
 
+    normalize_pred = normalize_pred.squeeze().cpu().detach().numpy()
+    gt = gt.squeeze().cpu().detach().numpy()
     # batch_size = normalize_pred.shape[0]
     # for b in range(batch_size):
-    #     per_b_hd = []
-    #     for i in torch.unique(gt):
-    #         pred_b = normalize_pred[b].numpy()
-    #         gt_b = gt[b].numpy()
-    #         hd = metric.hd(pred_b[pred_b==i], gt_b[gt_b==i], voxel_spacing, connectivity)
-    #         per_b_hd.append(hd)
-    #     hds.append(per_b_hd)
-    # hds = np.stack(hds)
-    
 
-    # meta['hd'] = np.mean(hds)
-    meta['per_channel_dice'] = per_channel_dice.numpy()
-    meta['mean_dice'] = torch.mean(per_channel_dice).numpy()
+    hds = np.zeros(20)
+    for i in range(1, 21):
+#         print(i)
+        if np.sum(gt==i) > 0:
+            if np.sum(normalize_pred==i) == 0:
+                hds[i-1] = 0
+            else:
+                hd = metric.binary.hd(normalize_pred==i, gt==i, voxel_spacing, connectivity)
+                hds[i-1] = hd
+    # hds = []
+    # for i in range(1, 21):
+    #     hd = metric.hd(normalize_pred==i, gt==i, voxel_spacing, connectivity)
+    #     # print(hd)
+    #     hds.append(hd)
+    
+    hds = np.stack(hds)
+    print(hds)
+    meta['per_channel_hd'] = hds
+    meta['hd'] = np.mean(hds)
+
+    meta['per_channel_dice'] = per_channel_dice.detach().cpu().numpy()
+    meta['mean_dice'] = torch.mean(per_channel_dice[1:]).cpu().detach().numpy()
     return meta
 
 class JoinLoss(_AbstractDiceLoss):

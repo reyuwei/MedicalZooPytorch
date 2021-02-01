@@ -42,6 +42,7 @@ class Trainer:
         from pathlib import Path
         # ckpt_file = Path(resume_folder) / (Path(resume_folder).stem + "_last_epoch.pth")
         ckpt_file = Path(resume_folder) / (Path(resume_folder).stem + "_last_epoch.pth")
+        # ckpt_file = Path(resume_folder) / (Path(resume_folder).stem + "_BEST.pth")
         self.epoch, self.optimizer = self.model.restore_checkpoint(ckpt_file, optimizer=self.optimizer)
 
     def training(self):
@@ -107,6 +108,7 @@ class Trainer:
         seg_gt = torch.FloatTensor()
         joint_output = torch.FloatTensor()
         joint_gt = torch.FloatTensor()
+        input_all = torch.FloatTensor()
 
         for batch_idx, input_tuple in enumerate(self.valid_data_loader):
             with torch.no_grad():
@@ -114,8 +116,11 @@ class Trainer:
                 input_tensor, target = prepare_input(input_tuple=input_tuple, args=self.args)
                 output = self.model(input_tensor)
                 
+                x, affine_mat, joint, input_scale, trans = input_tensor
+                input_all = torch.cat([input_all, x.detach().cpu()], dim=0)
+
                 pred_mask, pred_joint, pose_param, shape_param = output
-                target_mask, target_joint = target
+                target_mask, target_joint, target_theta, target_beta = target
 
                 seg_output = torch.cat([seg_output, pred_mask.detach().cpu()], dim=0)
                 seg_gt = torch.cat([seg_gt, target_mask.detach().cpu()], dim=0)
@@ -133,7 +138,7 @@ class Trainer:
             joint_meta = joint_error(joint_output, joint_gt)
             meta.update(joint_meta)
 
-        return meta, (joint_output, joint_gt), (normalize_seg_output, seg_gt)
+        return meta, (joint_output, joint_gt), (normalize_seg_output, seg_gt), input_all
         
 
 

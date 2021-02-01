@@ -50,7 +50,7 @@
             "name": "train with bone",
             "type": "python",
             "request": "launch",
-            "args": ["--segnet", "unet3d", "--joint_center_idx", "10", "--gpu", "0", "--batchSz", "2", "--encoderonly", "--dataset", "/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1"],
+            "args": ["--segnet", "unet3d", "--joint_center_idx", "10", "--gpu", "0", "--batchSz", "1", "--encoderonly", "--dataset", "/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1"],
             "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
                 "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH"},
             "program": "examples/train_mribone.py",

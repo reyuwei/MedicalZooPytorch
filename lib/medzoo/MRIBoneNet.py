@@ -2,8 +2,8 @@ from lib.losses3D.basic import expand_as_one_hot
 import sys
 sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
 import os
-import pxr
-import kaolin
+# import pxr
+# import kaolin
 from types import new_class
 from lib.medzoo.ResNet3D_VAE import ResNetEncoder
 import torch.nn as nn
@@ -32,7 +32,7 @@ class MRIBoneNet(BaseModel):
         self.base_n_filter=base_n_filter
 
         self.pose_param_dim = globalvar.STATIC_BONE_NUM*3#?
-        self.shape_param_dim = 35#?
+        self.shape_param_dim = 10#?
 
         self.use_lbs = use_lbs
         if not self.seg_only:
@@ -139,11 +139,11 @@ class MRIBoneNet(BaseModel):
 
         proj_mask = self.map(x, affine, verts)
 
-        if self.encoder_only:
+        if not self.encoder_only:
             x_cat = torch.cat([x, proj_mask], dim=1)
             out = self.segnet(x_cat)
         else:
-            out = expand_as_one_hot(proj_mask.squeeze(), self.n_classes)
+            out = expand_as_one_hot(proj_mask.squeeze(1), self.n_classes)
 
         if self.use_lbs:
             return out, joints, pose, scale

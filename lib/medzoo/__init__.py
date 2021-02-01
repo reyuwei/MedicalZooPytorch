@@ -1,17 +1,17 @@
 from json import encoder
 import torch.optim as optim
 
-from .COVIDNet import CovidNet, CNN
-from .DenseVoxelNet import DenseVoxelNet
-from .Densenet3D import DualPathDenseNet, DualSingleDenseNet, SinglePathDenseNet
-from .HighResNet3D import HighResNet3D
-from .HyperDensenet import HyperDenseNet, HyperDenseNet_2Mod
-from .ResNet3DMedNet import generate_resnet3d
-from .ResNet3D_VAE import ResNet3dVAE
-from .SkipDenseNet3D import SkipDenseNet3D
-from .Unet2D import Unet
-from .Unet3D import UNet3D
-from .Vnet import VNet, VNetLight
+# from .COVIDNet import CovidNet, CNN
+# from .DenseVoxelNet import DenseVoxelNet
+# from .Densenet3D import DualPathDenseNet, DualSingleDenseNet, SinglePathDenseNet
+# from .HighResNet3D import HighResNet3D
+# from .HyperDensenet import HyperDenseNet, HyperDenseNet_2Mod
+# from .ResNet3DMedNet import generate_resnet3d
+# from .ResNet3D_VAE import ResNet3dVAE
+# from .SkipDenseNet3D import SkipDenseNet3D
+# from .Unet2D import Unet
+# from .Unet3D import UNet3D
+# from .Vnet import VNet, VNetLight
 from .MRIBoneNet import MRIBoneNet
 
 model_list = ['UNET3D', 'DENSENET1', "UNET2D", 'DENSENET2', 'DENSENET3', 'HYPERDENSENET', "SKIPDENSENET3D",

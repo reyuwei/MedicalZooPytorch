@@ -1,24 +1,25 @@
 from torch.utils.data import DataLoader
-from .COVIDxdataset import COVIDxDataset
-from .Covid_Segmentation_dataset import COVID_Seg_Dataset
-from .brats2018 import MICCAIBraTS2018
-from .brats2019 import MICCAIBraTS2019
-from .brats2020 import MICCAIBraTS2020
-from .covid_ct_dataset import CovidCTDataset
-from .iseg2017 import MRIDatasetISEG2017
-from .iseg2019 import MRIDatasetISEG2019
-from .ixi_t1_t2 import IXIMRIdataset
-from .miccai_2019_pathology import MICCAI2019_gleason_pathology
-from .mrbrains2018 import MRIDatasetMRBRAINS2018
+# from .COVIDxdataset import COVIDxDataset
+# from .Covid_Segmentation_dataset import COVID_Seg_Dataset
+# from .brats2018 import MICCAIBraTS2018
+# from .brats2019 import MICCAIBraTS2019
+# from .brats2020 import MICCAIBraTS2020
+# from .covid_ct_dataset import CovidCTDataset
+# from .iseg2017 import MRIDatasetISEG2017
+# from .iseg2019 import MRIDatasetISEG2019
+# from .ixi_t1_t2 import IXIMRIdataset
+# from .miccai_2019_pathology import MICCAI2019_gleason_pathology
+# from .mrbrains2018 import MRIDatasetMRBRAINS2018
 from .mrihand import MRIHandDataset
 import os
 import numpy as np
 
 
-def generate_datasets(args, path='.././datasets'):
-    params = {'batch_size': args.batchSz,
-              'shuffle': True,
-              'num_workers': 2}
+def generate_datasets(args, path='.././datasets', params=None):
+    if params is None:
+        params = {'batch_size': args.batchSz,
+                'shuffle': False,
+                'num_workers': args.worker}
     samples_train = args.samples_train
     samples_val = args.samples_val
     split_percent = args.split
