@@ -207,11 +207,11 @@ class MRIHandDataset(Dataset):
                             augment3D.RandomFlip(),
                             augment3D.RandomShift(),
                             augment3D.RandomRotation()], p=0.5)
-
-        if os.path.exists(os.path.join(self.root, "gt_param_dict.pkl")):
-            self.gt_param = np.load(os.path.join(self.root, "gt_param_dict.pkl"), allow_pickle=True)
-        else:
-            self.gt_param = None
+        
+        self.gt_param = None
+        if not seg_only:
+            if os.path.exists(os.path.join(self.root, "gt_param_dict.pkl")):
+                self.gt_param = np.load(os.path.join(self.root, "gt_param_dict.pkl"), allow_pickle=True)
         
         if load and os.path.exists(self.save_name):
             ## load pre-generated data
@@ -320,7 +320,7 @@ class MRIHandDataset(Dataset):
 
     def fetch(self, index):
         item = self.data_dict[index]
-        print(item['input'])
+        # print(item['input'])
         if not os.path.exists(item['input']):
             return
         
@@ -350,7 +350,6 @@ class MRIHandDataset(Dataset):
         joint_tensor = torch.from_numpy(joint).float()
         
         if self.seg_only:
-            augmented_t1_scale = {}
             t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
             # t1, s = scale_pad(t1, s, affine, self.crop_size)
             # t1, s = even_pad(t1, s, affine, self.crop_size)
@@ -358,10 +357,10 @@ class MRIHandDataset(Dataset):
             if self.mode == "train" and self.augmentation:
                 [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
                 return torch.FloatTensor(augmented_t1.copy()).unsqueeze(0), torch.FloatTensor(augmented_s.copy()), \
-                        torch.from_numpy(augmented_affine).float(), joint_tensor, augmented_t1_scale, param_dict
+                        torch.from_numpy(augmented_affine).float(), joint_tensor, torch.FloatTensor(), param_dict
             else:
                 affine_tensor = torch.from_numpy(affine).float()
-                return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor, augmented_t1_scale, param_dict
+                return torch.FloatTensor(t1).unsqueeze(0), torch.FloatTensor(s), affine_tensor, joint_tensor, torch.FloatTensor(), param_dict
         
         else:
             if self.mode == "train" and self.augmentation:

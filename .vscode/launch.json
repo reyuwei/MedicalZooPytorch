@@ -13,7 +13,8 @@
             "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\Seafile\\seg_final\\", "--segonly", "--batchSz", "4"],
             "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "justMyCode": false
         },
 
         {

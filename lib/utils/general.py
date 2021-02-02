@@ -62,45 +62,45 @@ def prepare_input(input_tuple, inModalities=-1, inChannels=-1, cuda=False, args=
                 trans = trans.cuda()
             return (input_tensor, affine_mat, joint, input_scale, trans), (target, joint, theta, beta)
     
-    if modalities == 4:
-        if channels == 4:
-            img_1, img_2, img_3, img_4, target = input_tuple
-            input_tensor = torch.cat((img_1, img_2, img_3, img_4), dim=1)
-        elif channels == 3:
-            # t1 post constast is ommited
-            img_1, _, img_3, img_4, target = input_tuple
-            input_tensor = torch.cat((img_1, img_3, img_4), dim=1)
-        elif channels == 2:
-            # t1 and t2 only
-            img_1, _, img_3, _, target = input_tuple
-            input_tensor = torch.cat((img_1, img_3), dim=1)
-        elif channels == 1:
-            # t1 only
-            input_tensor, _, _, target = input_tuple
-    if modalities == 3:
-        if channels == 3:
-            img_1, img_2, img_3, target = input_tuple
-            input_tensor = torch.cat((img_1, img_2, img_3), dim=1)
-        elif channels == 2:
-            img_1, img_2, _, target = input_tuple
-            input_tensor = torch.cat((img_1, img_2), dim=1)
-        elif channels == 1:
-            input_tensor, _, _, target = input_tuple
-    elif modalities == 2:
-        if channels == 2:
-            img_t1, img_t2, target = input_tuple
+    # if modalities == 4:
+    #     if channels == 4:
+    #         img_1, img_2, img_3, img_4, target = input_tuple
+    #         input_tensor = torch.cat((img_1, img_2, img_3, img_4), dim=1)
+    #     elif channels == 3:
+    #         # t1 post constast is ommited
+    #         img_1, _, img_3, img_4, target = input_tuple
+    #         input_tensor = torch.cat((img_1, img_3, img_4), dim=1)
+    #     elif channels == 2:
+    #         # t1 and t2 only
+    #         img_1, _, img_3, _, target = input_tuple
+    #         input_tensor = torch.cat((img_1, img_3), dim=1)
+    #     elif channels == 1:
+    #         # t1 only
+    #         input_tensor, _, _, target = input_tuple
+    # if modalities == 3:
+    #     if channels == 3:
+    #         img_1, img_2, img_3, target = input_tuple
+    #         input_tensor = torch.cat((img_1, img_2, img_3), dim=1)
+    #     elif channels == 2:
+    #         img_1, img_2, _, target = input_tuple
+    #         input_tensor = torch.cat((img_1, img_2), dim=1)
+    #     elif channels == 1:
+    #         input_tensor, _, _, target = input_tuple
+    # elif modalities == 2:
+    #     if channels == 2:
+    #         img_t1, img_t2, target = input_tuple
 
-            input_tensor = torch.cat((img_t1, img_t2), dim=1)
+    #         input_tensor = torch.cat((img_t1, img_t2), dim=1)
 
-        elif channels == 1:
-            input_tensor, _, target = input_tuple
-    elif modalities == 1:
-        input_tensor, target = input_tuple
+    #     elif channels == 1:
+    #         input_tensor, _, target = input_tuple
+    # elif modalities == 1:
+    #     input_tensor, target = input_tuple
 
-    if in_cuda:
-        input_tensor, target = input_tensor.cuda(), target.cuda()
+    # if in_cuda:
+    #     input_tensor, target = input_tensor.cuda(), target.cuda()
 
-    return input_tensor, target
+    # return input_tensor, target
 
 
 def adjust_opt(optAlg, optimizer, epoch):
