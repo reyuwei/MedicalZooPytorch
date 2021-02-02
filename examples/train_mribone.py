@@ -67,7 +67,7 @@ def main():
 def get_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final')
-    parser.add_argument('--batchSz', type=int, default=4)
+    parser.add_argument('--batchSz', type=int, default=1)
     parser.add_argument('--dataset_name', type=str, default="mrihand")
     # parser.add_argument('--dim', nargs="+", type=int, default=(128, 128, 128))
     parser.add_argument('--dim', nargs="+", type=int, default=(64,64,64))
@@ -87,7 +87,7 @@ def get_arguments():
     parser.add_argument('--lr', default=1e-2, type=float,  help='learning rate (default: 1e-2)')
     parser.add_argument('--split', default=0.7, type=float, help='Select percentage of training data(default: 0.8)')
     parser.add_argument('--cuda', action='store_true', default=True)
-    parser.add_argument('--worker', default=2, type=int, help="workers")
+    parser.add_argument('--worker', default=0, type=int, help="workers")
     
     parser.add_argument('--segonly', action='store_true', default=False)
     parser.add_argument('--segnet', type=str, default="unet3d")

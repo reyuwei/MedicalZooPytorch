@@ -100,7 +100,7 @@ def crop_pad(t1, s, affine, crop_size):
     return t1, s, affine
 
 
-def scale_pad(t1,s,affine, crop_size):
+def scale_pad(t1, crop_size):
     full_vol_dim = t1.shape
     # pad zero
     pad_0 = (0,0)
@@ -119,15 +119,16 @@ def scale_pad(t1,s,affine, crop_size):
         pad_2 = (int(gap), int(gap))
 
     t1 = np.pad(t1, (pad_0, pad_1, pad_2), 'constant')
-    s = np.pad(s, (pad_0, pad_1, pad_2), 'constant')
+    # s = np.pad(s, (pad_0, pad_1, pad_2), 'constant')
 
     depth, height, width = t1.shape
     scale = [crop_size[0] * 1.0 / depth, crop_size[1] * 1.0 / height, crop_size[2] * 1.0 / width]
     voxel_size = [0.5, 0.5, 0.5]
     print(np.array(voxel_size) / np.array(scale))
     scaled = ndimage.interpolation.zoom(t1, scale, order=3)
-    scaled_s = ndimage.interpolation.zoom(s, scale, order=0)
-    return scaled, scaled_s
+    # scaled_s = ndimage.interpolation.zoom(s, scale, order=0)
+    # return scaled, scaled_s
+    return scaled, None
 
 
 def even_pad(t1, s, affine, crop_size):
@@ -319,6 +320,7 @@ class MRIHandDataset(Dataset):
 
     def fetch(self, index):
         item = self.data_dict[index]
+        print(item['input'])
         if not os.path.exists(item['input']):
             return
         
@@ -349,9 +351,9 @@ class MRIHandDataset(Dataset):
         
         if self.seg_only:
             augmented_t1_scale = {}
-            # t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
+            t1, s, affine = crop_pad(t1, s, affine, self.crop_size)
             # t1, s = scale_pad(t1, s, affine, self.crop_size)
-            t1, s = even_pad(t1, s, affine, self.crop_size)
+            # t1, s = even_pad(t1, s, affine, self.crop_size)
 
             if self.mode == "train" and self.augmentation:
                 [augmented_t1], augmented_s, augmented_affine = self.transform([t1], s, affine)
