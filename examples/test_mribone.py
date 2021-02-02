@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import sys
 sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
+sys.path.append("F:\\OneDrive\\Projects_ongoing\\10_HANDMRI\\mri_bone_net\\MedicalZooPytorch\\")
 # %%
 import lib.medloaders as medical_loaders
 import lib.medzoo as medzoo
@@ -27,8 +28,15 @@ def main():
     args = argparse.ArgumentParser()
     args = args.parse_args()
     # parserfile = "/p300/liyuwei/MRI_Bonenet/saved_models/MRIBONENET_checkpoints/MRIBONENET_11_01___19_22_mrihand_args.txt"
-    parserfile = "/p300/liyuwei/MRI_Bonenet/saved_models/MRIBONENET_checkpoints/MRIBONENET_14_01___06_07_mrihand_args.txt" #unet
+    # parserfile = "/p300/liyuwei/MRI_Bonenet/saved_models/MRIBONENET_checkpoints/MRIBONENET_14_01___06_07_mrihand_args.txt" #unet
     # parserfile = "/p300/liyuwei/MRI_Bonenet/saved_models/MRIBONENET_checkpoints/MRIBONENET_14_01___06_10_mrihand_args.txt" #vnet
+
+    parserfile = "../saved_models/MRIBONENET_checkpoints/MRIBONENET_14_01___06_07_mrihand_/args.txt" #unet
+    # parserfile = "../saved_models/MRIBONENET_checkpoints/MRIBONENET_14_01___06_10_mrihand/_args.txt" #vnet
+
+    dataset_path = "E:\\LIYUWEI\\hand_mri\\Seafile\\seg_final\\"
+    # dataset_path = '/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1'
+
     with open(parserfile, 'r') as f:
         args.__dict__ = json.load(f)
     print(args)
@@ -47,7 +55,7 @@ def main():
         'num_workers': 1}
 
     training_generator, val_generator, full_volume, affine = \
-                    medical_loaders.generate_datasets(args, path='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final_t1', params=params)
+                    medical_loaders.generate_datasets(args, path=dataset_path, params=params)
                     
     model, optimizer = medzoo.create_model(args)
     criterion = JoinLoss(classes=args.classes, skip_index_after=args.classes)

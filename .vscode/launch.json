@@ -4,6 +4,27 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+
+
+        {
+            "name": "win_train",
+            "type": "python",
+            "request": "launch",
+            "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\Seafile\\seg_final\\"],
+            "program": "examples/train_mribone.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal"
+        },
+
+        {
+            "name": "win_test",
+            "type": "python",
+            "request": "launch",
+            "program": "examples/test_mribone.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+        },
+
         {
             "name": "test",
             "type": "python",
@@ -13,6 +34,7 @@
             "env": {"PYTHONPATH":"$PYTHONPATH:/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/lib/python", 
                 "PATH":"/p300/liyuwei/MRI_Bonenet/usd-20-11-linux64_py36-centos_release/bin:$PATH"},
         },
+
         {
             "name": "resume",
             "type": "python",
@@ -46,6 +68,7 @@
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         },
+
         {
             "name": "train with bone",
             "type": "python",

@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import sys
 sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
+sys.path.append("F:\\OneDrive\\Projects_ongoing\\10_HANDMRI\\mri_bone_net\\MedicalZooPytorch\\")
 
 import lib.medloaders as medical_loaders
 import lib.medzoo as medzoo
@@ -86,6 +87,7 @@ def get_arguments():
     parser.add_argument('--lr', default=1e-2, type=float,  help='learning rate (default: 1e-2)')
     parser.add_argument('--split', default=0.7, type=float, help='Select percentage of training data(default: 0.8)')
     parser.add_argument('--cuda', action='store_true', default=True)
+    parser.add_argument('--worker', default=2, type=int, help="workers")
     
     parser.add_argument('--segonly', action='store_true', default=False)
     parser.add_argument('--segnet', type=str, default="unet3d")

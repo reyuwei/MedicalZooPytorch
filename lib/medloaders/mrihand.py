@@ -322,19 +322,20 @@ class MRIHandDataset(Dataset):
         if not os.path.exists(item['input']):
             return
         
+        param_dict = {}
+
         if self.gt_param is not None:
             name = Path(item['input']).stem[:-3]
-            params = self.gt_param[name]
-            theta = torch.from_numpy(params['theta']).float()
-            beta = torch.from_numpy(params['beta']).float()
-            trans_back2gt = torch.from_numpy(params['trans_back2gt']).float()
-            param_dict = {
-                'theta': theta,
-                'beta': beta,
-                'trans': trans_back2gt
-            }
-        else:
-            param_dict = {}
+            if name in self.gt_param:
+                params = self.gt_param[name]
+                theta = torch.from_numpy(params['theta']).float()
+                beta = torch.from_numpy(params['beta']).float()
+                trans_back2gt = torch.from_numpy(params['trans_back2gt']).float()
+                param_dict = {
+                    'theta': theta,
+                    'beta': beta,
+                    'trans': trans_back2gt
+                }
 
 
         t1 = np.load(item['input'])
