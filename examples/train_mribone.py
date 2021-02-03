@@ -69,8 +69,8 @@ def get_arguments():
     parser.add_argument('--dataset', type=str, default='/p300/liyuwei/DATA_mri/Hand_MRI_capture/seg_final')
     parser.add_argument('--batchSz', type=int, default=1)
     parser.add_argument('--dataset_name', type=str, default="mrihand")
-    # parser.add_argument('--dim', nargs="+", type=int, default=(128, 128, 128))
-    parser.add_argument('--dim', nargs="+", type=int, default=(64,64,64))
+    parser.add_argument('--dim', nargs="+", type=int, default=(128, 128, 128))
+    # parser.add_argument('--dim', nargs="+", type=int, default=(64,64,64))
     parser.add_argument('--nEpochs', type=int, default=9999)
     parser.add_argument('--classes', type=int, default=21)
     parser.add_argument('--samples_train', type=int, default=10)
@@ -94,6 +94,8 @@ def get_arguments():
     parser.add_argument('--joint_center_idx', type=int, default=0)
     parser.add_argument('--use_lbs', action='store_true', default=False)
     parser.add_argument('--encoderonly', action='store_true', default=False)
+
+    parser.add_argument('--jointonly', action='store_true', default=False)
 
     parser.add_argument('--loadData', default=True)
     parser.add_argument('--resume', default='', type=str, metavar='PATH',

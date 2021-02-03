@@ -10,11 +10,11 @@
             "name": "win_train",
             "type": "python",
             "request": "launch",
-            "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\Seafile\\seg_final\\", "--segonly", "--batchSz", "4"],
+            "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\Seafile\\seg_final\\", "--segonly", "--batchSz", "2"],
             "program": "examples/train_mribone.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": true
         },
 
         {
