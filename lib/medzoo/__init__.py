@@ -4,7 +4,7 @@ from .MRIBoneNet import MRIBoneNet
 
 model_list = ['UNET3D', 'DENSENET1', "UNET2D", 'DENSENET2', 'DENSENET3', 'HYPERDENSENET', "SKIPDENSENET3D",
               "DENSEVOXELNET", 'VNET', 'VNET2', "RESNET3DVAE", "RESNETMED3D", "COVIDNET1", "COVIDNET2", "CNN",
-              "HIGHRESNET", "MRIBONENET"]
+              "HIGHRESNET", "MRIBONENET", "UNET3D"]
 
 
 def create_model(args):
