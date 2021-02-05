@@ -114,6 +114,7 @@ import torch
 import torch.nn as nn
 import sys
 from collections import OrderedDict
+sys.path.append("/p300/liyuwei/MRI_Bonenet/MedicalZooPytorch")
 sys.path.append("F:\\OneDrive\\Projects_ongoing\\10_HANDMRI\\mri_bone_net\\MedicalZooPytorch\\")
 from lib.medzoo.BaseModelClass import BaseModel
 from lib.medzoo.Unet3D import UNet3D
@@ -123,9 +124,9 @@ def payer_weights_init(m):
         nn.init.he_initializer(m.weight)
         nn.init.zero_(m.bias)
 
-class payer_heatmap_unet(BaseModel):
+class Payer_Heatmap_UNet3D(BaseModel):
     def __init__(self, in_channels, num_heatmaps, num_filters_base=64):
-        super(payer_heatmap_unet, self).__init__()
+        super(Payer_Heatmap_UNet3D, self).__init__()
         self.in_channels = in_channels
         self.num_heatmaps = num_heatmaps
         self.num_filters_base = num_filters_base
@@ -160,5 +161,5 @@ class payer_heatmap_unet(BaseModel):
         print("Unet3D test is complete")
 
 if __name__ == "__main__":
-    net = payer_heatmap_unet(1, 25)
+    net = Payer_Heatmap_UNet3D(1, 25)
     net.test()

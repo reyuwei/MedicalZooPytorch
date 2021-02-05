@@ -1,6 +1,7 @@
 from json import encoder
 import torch.optim as optim
 from .MRIBoneNet import MRIBoneNet
+from .MRIJointNet import MRIJointNet
 
 model_list = ['UNET3D', 'DENSENET1', "UNET2D", 'DENSENET2', 'DENSENET3', 'HYPERDENSENET', "SKIPDENSENET3D",
               "DENSEVOXELNET", 'VNET', 'VNET2', "RESNET3DVAE", "RESNETMED3D", "COVIDNET1", "COVIDNET2", "CNN",
@@ -14,12 +15,15 @@ def create_model(args):
     lr = args.lr
     in_channels = args.inChannels
     num_classes = args.classes
+    num_heatmaps = args.joints
     weight_decay = 0.0000000001
     print("Building Model . . . . . . . ." + model_name)
 
     if model_name == "MRIBONENET":
         model = MRIBoneNet(in_channels=in_channels, classes=num_classes, seg_only=args.segonly, seg_net=args.segnet,
                             center_idx=args.joint_center_idx, use_lbs=args.use_lbs, encoder_only=args.encoderonly)
+    elif model_name == "MRIJOINTNET":
+        model = MRIJointNet(in_channels=in_channels, n_heatmaps=num_heatmaps, method=args.model_method)
 
     print(model_name, 'Number of params: {}'.format(
         sum([p.data.nelement() for p in model.parameters()])))
