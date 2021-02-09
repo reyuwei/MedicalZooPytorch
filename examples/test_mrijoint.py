@@ -1,7 +1,7 @@
 # Python libraries
 import argparse
 import os
-
+import SimpleITK as sitk
 import torch
 import numpy as np
 import sys
@@ -13,26 +13,33 @@ import lib.medzoo as medzoo
 import lib.train as train
 # Lib files
 import lib.utils as utils
+from lib.train.trainer import prepare_input
 from lib.losses3D.JoinLoss import JoinLoss
-from lib.losses3D.PayerLoss import PayerLoss
+from lib.losses3D.PayerLoss import PayerLoss, project_3d_joint
 import json
 seed = 1777777
 torch.manual_seed(seed)
 
 def main():
-    args = get_arguments()
-    utils.reproducibility(args, seed)
-    utils.make_dirs(args.save)
+    
+    args = argparse.ArgumentParser()
+    args = args.parse_args()
+    parserfile = "../saved_models/MRIJOINTNET_checkpoints/MRIJOINTNET_07_02___06_53_mrihand_/args.txt" #unet
 
+    with open(parserfile, 'r') as f:
+        args.__dict__ = json.load(f)
     print(args)
-    with open(args.save + 'args.txt', 'w') as f:
-        json.dump(args.__dict__, f, indent=2)
-    with open(args.save + '/args.txt', 'w') as f:
-        json.dump(args.__dict__, f, indent=2)
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    args.resume = args.save
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     print("Number of available GPUs: {}".format(torch.cuda.device_count()))
 
+    args.worker =0
+    args.batchSz = 1
+    args.encoderonly = False
+    args.shuffle=False
+    params = {'batch_size': 1,
+        'shuffle': False,
+        'num_workers': 1}
     training_generator, val_generator, full_volume, affine = \
                 medical_loaders.generate_datasets(args, path=args.dataset)
     model, optimizer = medzoo.create_model(args)
@@ -44,8 +51,35 @@ def main():
 
     trainer = train.Trainer(args, model, criterion, optimizer, train_data_loader=training_generator,
                             valid_data_loader=val_generator, lr_scheduler=None)
-    print("START TRAINING...")
-    trainer.training()
+    os.makedirs(args.save + "/eval", exist_ok=True)
+    meta = {}
+
+    trainer.model.eval()
+    meta['joint_error'] = []
+    for batch_idx, input_tuple in enumerate(trainer.valid_data_loader):
+        with torch.no_grad():
+            print(batch_idx, len(trainer.valid_data_loader))
+            input_tensor, target = prepare_input(input_tuple=input_tuple, args=trainer.args)
+            pred = trainer.model(input_tensor)
+            
+            target_landmark, affine = target
+            pred_heatmap, sigmas = pred
+            sigmas = torch.ones_like(sigmas) * 2.5
+            target_landmark_idx = project_3d_joint(target_landmark, affine)
+            target_heatmap = criterion.generate_heatmap(target_landmark_idx, sigmas)
+            joint_error = criterion.joint_error(pred_heatmap, target_landmark_idx)
+
+            meta['joint_error'].append(float(joint_error.detach().cpu().numpy()))
+
+            sitk.WriteImage(sitk.GetImageFromArray(pred_heatmap.squeeze().detach().cpu().numpy().transpose(1,2,3,0)), args.save + "/eval" + "/{:02d}_hmo.nii".format(batch_idx))
+            sitk.WriteImage(sitk.GetImageFromArray(target_heatmap.squeeze().detach().cpu().numpy().transpose(1,2,3,0)), args.save + "/eval" + "/{:02d}_hmgt.nii".format(batch_idx))
+            sitk.WriteImage(sitk.GetImageFromArray(input_tensor.squeeze().detach().cpu().numpy()), args.save + "/eval" + "/{:02d}_input.nii".format(batch_idx))
+
+    meta['mean_joint_error'] = np.mean(np.stack(meta['joint_error']))
+
+    print(meta)
+    with open(args.save + "/eval" + "/metric.json", 'w') as f:
+        json.dump(meta, f, indent=2)
 
 
 def get_arguments():
@@ -69,8 +103,7 @@ def get_arguments():
                         help='Tensor normalization: options ,max_min,',
                         choices=('max_min', 'full_volume_mean', 'brats', 'max', 'mean'))
     # parser.add_argument('--fold_id', default='1', type=str, help='Select subject for fold validation')
-    parser.add_argument('--lr', default=1e-3, type=float,  help='learning rate (default: 1e-2)')
-    # parser.add_argument('--lr', default=1e-4, type=float,  help='learning rate (default: 1e-2)')
+    parser.add_argument('--lr', default=1e-4, type=float,  help='learning rate (default: 1e-2)')
     # parser.add_argument('--lr', default=1e-6, type=float,  help='learning rate (default: 1e-2)')
     parser.add_argument('--split', default=0.7, type=float, help='Select percentage of training data(default: 0.8)')
     parser.add_argument('--cuda', action='store_true', default=True)

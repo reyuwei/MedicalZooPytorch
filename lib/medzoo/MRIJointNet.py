@@ -13,7 +13,7 @@ from lib.medzoo.BaseModelClass import BaseModel
 
 
 class MRIJointNet(BaseModel):
-    def __init__(self, in_channels, n_heatmaps=25, method="UNET", num_filters_base):
+    def __init__(self, in_channels, n_heatmaps=25, method="UNET", num_filters_base=64):
         super(MRIJointNet, self).__init__()
 
         self.method = method
@@ -30,6 +30,5 @@ class MRIJointNet(BaseModel):
     def forward(self, x):
         return self.net(x)
 
-    def test(self)
+    def test(self):
         pass
-

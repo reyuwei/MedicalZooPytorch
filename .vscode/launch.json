@@ -10,8 +10,18 @@
             "name": "win_train",
             "type": "python",
             "request": "launch",
-            "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\Seafile\\seg_final\\", "--segonly", "--batchSz", "2"],
+            "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\seg_final_t1\\", "--segonly", "--batchSz", "2"],
             "program": "examples/train_mribone.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "win_train_joint",
+            "type": "python",
+            "request": "launch",
+            "args": ["--dataset", "E:\\LIYUWEI\\hand_mri\\seg_final_t1\\", "--jointonly", "--batchSz", "1"],
+            "program": "examples/train_mrijoint.py",
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true
@@ -25,7 +35,22 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
         },
-
+        {
+            "name": "win_test_joint",
+            "type": "python",
+            "request": "launch",
+            "program": "examples/test_mrijoint.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+        },
+        {
+            "name": "win_Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+        },
         {
             "name": "test",
             "type": "python",

@@ -60,7 +60,10 @@ def prepare_input(input_tuple, inModalities=-1, inChannels=-1, cuda=False, args=
                 theta = theta.cuda()
                 beta = beta.cuda()
                 trans = trans.cuda()
-            return (input_tensor, affine_mat, joint, input_scale, trans), (target, joint, theta, beta)
+            if args.jointonly:
+                return input_tensor, (joint, affine_mat)
+            else:
+                return (input_tensor, affine_mat, joint, input_scale, trans), (target, joint, theta, beta)
     
     # if modalities == 4:
     #     if channels == 4:

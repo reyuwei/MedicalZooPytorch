@@ -124,8 +124,16 @@ def payer_weights_init(m):
         nn.init.he_initializer(m.weight)
         nn.init.zero_(m.bias)
 
+class Payer_Heatmap_SCNet(BaseModel):
+    def __init__(self):
+        super(Payer_Heatmap_SCNet, self).__init__()
+    def forward(self, x):
+        pass
+    def test(self):
+        pass
+
 class Payer_Heatmap_UNet3D(BaseModel):
-    def __init__(self, in_channels, num_heatmaps, num_filters_base=64):
+    def __init__(self, in_channels, num_heatmaps, num_filters_base=64, init_sigma=2.5):
         super(Payer_Heatmap_UNet3D, self).__init__()
         self.in_channels = in_channels
         self.num_heatmaps = num_heatmaps
@@ -138,20 +146,28 @@ class Payer_Heatmap_UNet3D(BaseModel):
 
         self.regress = nn.Sequential(OrderedDict([
             ("conv1", nn.Conv3d(self.num_filters_base, self.num_heatmaps, kernel_size=3, stride=1, padding=1, bias=True)),
+            ("tanh", nn.Tanh())
         ]))
 
-        nn.init.kaiming_normal_(self.node.conv1.weight)
-        nn.init.zeros_(self.node.conv1.bias)
-        nn.init.trunc_normal_(self.regress.conv1.weight, std=0.0001)
-        nn.init.zeros_(self.regress.conv1.bias)
+        # nn.init.kaiming_normal_(self.node.conv1.weight)
+        # nn.init.zeros_(self.node.conv1.bias)
+        # nn.init.trunc_normal_(self.regress.conv1.weight, std=0.0001)
+        # nn.init.zeros_(self.regress.conv1.bias)
 
-        self.scnet_local = UNet3D(self.num_filters_base, self.num_filters_base)  # TODO: change to paper configuration
-        
+        self.scnet_local = UNet3D(self.num_filters_base, self.num_filters_base, base_n_filter=8)  # TODO: change to paper configuration
+        # self.direct_unet = UNet3D(self.in_channels, self.num_filters_base, base_n_filter=8)  # TODO: change to paper configuration
+        sigma = self.num_heatmaps * [init_sigma]
+        # self.heatmap_sigma = torch.nn.Parameter(torch.tensor(sigma).float())
+        self.heatmap_sigma = torch.tensor(sigma).float().cuda()
+
     def forward(self, x):
         out = self.node(x)
         unet_out = self.scnet_local(out)
+
+        # unet_out = self.direct_unet(x)
         heatmaps = self.regress(unet_out)
-        return heatmaps
+        return heatmaps, self.heatmap_sigma
+        # return pred_heatmap, sigmas, net_weight
 
     def test(self):
         input_tensor = torch.rand(1, 1, 32, 32, 32)
@@ -159,6 +175,7 @@ class Payer_Heatmap_UNet3D(BaseModel):
         out = self.forward(input_tensor)
         assert ideal_out.shape == out.shape
         print("Unet3D test is complete")
+
 
 if __name__ == "__main__":
     net = Payer_Heatmap_UNet3D(1, 25)

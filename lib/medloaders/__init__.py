@@ -18,10 +18,14 @@ def generate_datasets(args, path='.././datasets', params=None):
         split = np.load(split_pkl, allow_pickle=True)[0]
         train_lst = split['train']
         val_lst = split['val']
+        if args.segonly:
+            crop_input=True
+        if args.jointonly:
+            crop_input=False
         train_loader = MRIHandDataset(args, 'train', dataset_path=path, crop_dim=args.dim,
-                                          lst=train_lst, load=args.loadData, seg_only=args.segonly)
+                                          lst=train_lst, load=args.loadData, crop_input=crop_input)
         val_loader = MRIHandDataset(args, 'val', dataset_path=path, crop_dim=args.dim, 
-                                           lst=val_lst, load=args.loadData, seg_only=args.segonly)
+                                           lst=val_lst, load=args.loadData, crop_input=crop_input)
 
     training_generator = DataLoader(train_loader, **train_params)
     val_generator = DataLoader(val_loader, **val_prams)

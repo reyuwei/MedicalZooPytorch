@@ -117,23 +117,28 @@ class TensorboardWriter():
         :param writer_step: tensorboard writer step
         """
         # WARNING ASSUMING THAT CHANNELS IN SAME ORDER AS DICTIONARY
+        if channel_score is not None:
+            dice_coeff = np.mean(channel_score) * 100
+            num_channels = len(channel_score)
+            self.data[mode]['dsc'] += dice_coeff
 
-        dice_coeff = np.mean(channel_score) * 100
-
-        num_channels = len(channel_score)
-        self.data[mode]['dsc'] += dice_coeff
         self.data[mode]['loss'] += loss
         self.data[mode]['count'] = iter + 1
+
+        if self.writer is not None:
+            print("Loss: ", loss)
+            self.writer.add_scalar(mode + '/Loss_iter' , loss, global_step=writer_step)
 
         if meta is not None:
             self.data[mode]['loss_joint'] += meta['loss_joint']
             self.data[mode]['joint_auc'] += meta['joint_auc']
             self.data[mode]['joint_mse'] += meta['joint_mse']
 
-        for i in range(num_channels):
-            self.data[mode][self.label_names[i]] += channel_score[i]
-            if self.writer is not None:
-                self.writer.add_scalar(mode + '/' + self.label_names[i], channel_score[i], global_step=writer_step)
+        if channel_score is not None:
+            for i in range(num_channels):
+                self.data[mode][self.label_names[i]] += channel_score[i]
+                if self.writer is not None:
+                    self.writer.add_scalar(mode + '/' + self.label_names[i], channel_score[i], global_step=writer_step)
 
     def write_end_of_epoch(self, epoch):
 
